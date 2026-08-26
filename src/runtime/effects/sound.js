@@ -1,7 +1,7 @@
 import hoverUrl from "../sounds/uisound-hover.wav?url";
 
+const COALESCE_MS = 16;
 const GAIN = 0.9189 * 10 ** (5 / 20);
-const MIN_MS = 120;
 
 let ctx = null;
 let buf = null;
@@ -35,7 +35,7 @@ async function decoded() {
 function playHoverSound() {
   const now = performance.now();
   if (now < nextAt) return;
-  nextAt = now + MIN_MS;
+  nextAt = now + COALESCE_MS;
   const audio = audioContext();
   if (!audio) return;
   void decoded().then((decodedBuf) => {
@@ -55,7 +55,13 @@ export function sound(opts, api) {
     audioContext();
   }
 
+  function onCycle() {
+    if (!api.getHover().charEl) return;
+    playHoverSound();
+  }
+
   api.root.addEventListener("pointerdown", unlock);
+  api.root.addEventListener("tfxcycle", onCycle);
 
   return {
     enter() {
@@ -63,6 +69,7 @@ export function sound(opts, api) {
     },
     destroy() {
       api.root.removeEventListener("pointerdown", unlock);
+      api.root.removeEventListener("tfxcycle", onCycle);
     },
   };
 }

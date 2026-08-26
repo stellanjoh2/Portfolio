@@ -1,8 +1,10 @@
+import monumentUrl from "./fonts/PPMonumentWide-Black.otf?url";
 import skullzUrl from "./fonts/skullz.ttf?url";
 
 export const GOOGLE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Bytesized&family=Coral+Pixels&family=DotGothic16&family=Manufacturing+Consent&family=Pixelify+Sans:wght@400;700&display=swap";
+  "https://fonts.googleapis.com/css2?family=Coral+Pixels&family=DotGothic16&family=Manufacturing+Consent&family=Pixelify+Sans:wght@400;700&display=swap";
 
+export const MONUMENT_FAMILY = "PP Monument Wide";
 export const SKULLZ_FAMILY = "SkullZ";
 
 const FACES = [
@@ -10,23 +12,30 @@ const FACES = [
   '400 16px "Coral Pixels"',
   '400 16px "Manufacturing Consent"',
   '400 16px "DotGothic16"',
-  '400 16px "Bytesized"',
 ];
 
 function loadFaces() {
   return Promise.all(FACES.map((face) => document.fonts.load(face).catch(() => {})));
 }
 
-async function loadSkullz() {
-  if ([...document.fonts].some((face) => face.family.replace(/['"]/g, "") === SKULLZ_FAMILY)) {
-    return document.fonts.load(`400 16px "${SKULLZ_FAMILY}"`, "Dh").catch(() => {});
+async function loadLocalFace(family, url, weight, sample) {
+  if ([...document.fonts].some((face) => face.family.replace(/['"]/g, "") === family)) {
+    return document.fonts.load(`${weight} 16px "${family}"`, sample).catch(() => {});
   }
-  const face = new FontFace(SKULLZ_FAMILY, `url(${JSON.stringify(skullzUrl)})`, {
-    weight: "400",
+  const face = new FontFace(family, `url(${JSON.stringify(url)})`, {
+    weight,
     style: "normal",
   });
   document.fonts.add(await face.load());
-  await document.fonts.load(`400 16px "${SKULLZ_FAMILY}"`, "Dh");
+  await document.fonts.load(`${weight} 16px "${family}"`, sample);
+}
+
+async function loadSkullz() {
+  return loadLocalFace(SKULLZ_FAMILY, skullzUrl, "400", "D");
+}
+
+async function loadMonument() {
+  return loadLocalFace(MONUMENT_FAMILY, monumentUrl, "900", "Welcome");
 }
 
 export async function injectFonts() {
@@ -45,5 +54,5 @@ export async function injectFonts() {
           link.href = GOOGLE_FONTS_HREF;
         })
       : loadFaces();
-  await Promise.all([google, loadSkullz().catch(() => {})]);
+  await Promise.all([google, loadSkullz().catch(() => {}), loadMonument().catch(() => {})]);
 }

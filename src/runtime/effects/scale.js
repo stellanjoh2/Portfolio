@@ -8,8 +8,10 @@ function dur(api, hover) {
 
 function originOf(el, hover) {
   const ox = el.style.getPropertyValue("--tfx-ox") || "50%";
-  const oy = `${hover?.originY ?? 50}%`;
-  return `${ox} ${oy}`;
+  const inkY = Number(el.dataset.tfxInkY);
+  const base = Number.isFinite(inkY) ? inkY * 100 : 50;
+  const bias = (hover?.originY ?? 50) - 50;
+  return `${ox} ${base + bias}%`;
 }
 
 export function scale(opts, api) {

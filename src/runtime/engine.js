@@ -118,13 +118,6 @@ export function createEngine(root, initialConfig) {
     fire(allEffects(effects), "leaveField", makeCtx());
   }
 
-  function onDown(e) {
-    hover.pointer = { x: e.clientX, y: e.clientY };
-    setHovered(charFromPoint(e.clientX, e.clientY));
-    if (!hover.charEl) return;
-    fire(effects.letter, "click", makeCtx({ el: hover.charEl, target: "letter" }));
-  }
-
   let cancelled = false;
 
   async function setup() {
@@ -133,13 +126,11 @@ export function createEngine(root, initialConfig) {
     buildEffects();
     root.addEventListener("pointermove", onMove);
     root.addEventListener("pointerleave", onLeaveField);
-    root.addEventListener("pointerdown", onDown);
   }
 
   function teardownSplit() {
     root.removeEventListener("pointermove", onMove);
     root.removeEventListener("pointerleave", onLeaveField);
-    root.removeEventListener("pointerdown", onDown);
     onLeaveField();
     destroyEffects();
     splitBag?.split?.revert();

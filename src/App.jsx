@@ -53,6 +53,21 @@ function Toggle({ label, checked, onChange }) {
   );
 }
 
+function SoundSwitch({ on, onChange }) {
+  return (
+    <Row label="sound">
+      <div className="sound-switch" role="group" aria-label="sound">
+        <button type="button" className={on ? "is-on" : undefined} aria-pressed={on} onClick={() => onChange(true)}>
+          on
+        </button>
+        <button type="button" className={!on ? "is-on" : undefined} aria-pressed={!on} onClick={() => onChange(false)}>
+          off
+        </button>
+      </div>
+    </Row>
+  );
+}
+
 function displayFont(family) {
   const quoted = String(family).match(/"([^"]+)"/);
   if (quoted) return quoted[1];
@@ -243,6 +258,8 @@ export function App() {
   }
 
   return (
+    <div className="shell">
+    <div className="artboard">
     <div className={uiHidden ? "editor editor--ui-hidden" : "editor"}>
       <div className="stage">
         <div className="preview" ref={stageRef} />
@@ -356,6 +373,10 @@ export function App() {
             onChange={(on) =>
               setConfig({ ...config, base: { ...config.base, boxes: on } })
             }
+          />
+          <SoundSwitch
+            on={hasEffect(config, "letter", "sound")}
+            onChange={(on) => setConfig(setEffect(config, "letter", "sound", on))}
           />
         </Section>
 
@@ -495,7 +516,7 @@ export function App() {
               }
             />
             {hasEffect(config, "letter", "scale") && (
-              <Row label="amount" value={Number(letterScale?.amount ?? 1.5).toFixed(2)}>
+              <Row label="amount" value={`${Number(letterScale?.amount ?? 1.5).toFixed(2)}×`}>
                 <input
                   type="range"
                   min="1.05"
@@ -736,13 +757,6 @@ export function App() {
               </>
             )}
           </Fx>
-          <Fx>
-            <Toggle
-              label="sound"
-              checked={hasEffect(config, "letter", "sound")}
-              onChange={(on) => setConfig(setEffect(config, "letter", "sound", on))}
-            />
-          </Fx>
         </Section>
 
         <Section title="Glyph">
@@ -764,7 +778,7 @@ export function App() {
                     const faces = cycleFonts.filter((font) => !String(font).startsWith("glyph:"));
                     setConfig(
                       patchEffect(config, "letter", "fontCycle", {
-                        fonts: on ? [...faces, "glyph:D", "glyph:h"] : faces,
+                        fonts: on ? [...faces, "glyph:D"] : faces,
                       })
                     );
                   }}
@@ -805,6 +819,8 @@ export function App() {
           )}
         </Section>
       </aside>
+    </div>
+    </div>
     </div>
   );
 }

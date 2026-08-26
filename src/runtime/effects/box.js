@@ -29,12 +29,16 @@ function visualRect(el) {
   return el.getBoundingClientRect();
 }
 
+function emPx(root, em) {
+  return (parseFloat(getComputedStyle(root).fontSize) || 16) * em;
+}
+
 function place(node, el, root, gsap, { extraWidth = 0 } = {}) {
   if (!node || !el) return;
   const r = visualRect(el);
   if (!r) return;
   const b = root.getBoundingClientRect();
-  const pad = 6;
+  const pad = emPx(root, 0.021);
   const extra = r.width * extraWidth;
   gsap.set(node, {
     x: r.left - b.left - pad - extra / 2,
@@ -44,15 +48,18 @@ function place(node, el, root, gsap, { extraWidth = 0 } = {}) {
   });
 }
 
-function placeDetails(node, el, root, gsap, text) {
+function placeDetails(node, el, root, gsap, text, { extraWidth = 0 } = {}) {
   if (!node || !el) return;
-  const r = el.getBoundingClientRect();
+  const r = visualRect(el);
+  if (!r) return;
   const b = root.getBoundingClientRect();
+  const pad = emPx(root, 0.021);
+  const extra = r.width * extraWidth;
+  const line = emPx(root, 0.035) * 1.3;
   node.textContent = text;
   gsap.set(node, {
-    x: r.left - b.left,
-    y: r.top - b.top - 16,
-    autoAlpha: 1,
+    x: r.left - b.left - pad - extra / 2,
+    y: r.top - b.top - pad - line * 2,
   });
 }
 
@@ -80,7 +87,8 @@ export function box(opts, api) {
         ctx.charEl,
         api.root,
         api.gsap,
-        `${codePoint(ctx.charEl)}   ${ch}   ${idx}`
+        `${codePoint(ctx.charEl)}   ${ch}   ${idx}`,
+        { extraWidth: opts.extraWidth ?? 0 }
       );
     } else if (opts.layer === "letter") {
       api.gsap.set(detailsEl(api), { autoAlpha: 0 });
@@ -109,10 +117,12 @@ export function box(opts, api) {
   function onCycle() {
     if (opts.layer !== "letter") return;
     if (!api.getHover().charEl) return;
-    const node = boxEl(api, "letter");
-    if (!node) return;
+    const nodes = [boxEl(api, "letter")];
+    if (opts.details) nodes.push(detailsEl(api));
+    const targets = nodes.filter(Boolean);
+    if (!targets.length) return;
     api.gsap.fromTo(
-      node,
+      targets,
       { autoAlpha: 0 },
       { autoAlpha: 1, duration: 0.05, ease: "none", overwrite: "auto" }
     );
@@ -127,6 +137,9 @@ export function box(opts, api) {
       stop();
       const node = boxEl(api, opts.layer);
       api.gsap.set(node, { autoAlpha: 1 });
+      if (opts.details && opts.layer === "letter") {
+        api.gsap.set(detailsEl(api), { autoAlpha: 1 });
+      }
       const loop = () => {
         const live = api.getHover();
         sync({ ...live, config: api.getConfig() });

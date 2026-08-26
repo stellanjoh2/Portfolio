@@ -1,5 +1,5 @@
 import { SKULLZ_FAMILY } from "../injectFonts.js";
-import { inkOffsetToOrigin } from "../glyphBounds.js";
+import { fitGlyphToInk, inkOffsetToOrigin, liftInkIntoBox, restoreCharBox } from "../glyphBounds.js";
 
 function glyphOf(spec) {
   if (typeof spec !== "string" || !spec.startsWith("glyph:")) return null;
@@ -20,18 +20,27 @@ function paintText(el, text) {
   });
 }
 
-function alignInk(el) {
+function alignInk(el, lift = false) {
   const glyph = el.querySelector(".tfx-glyph");
   const nodes = el.querySelectorAll(".tfx-glyph, .tfx-glow");
   if (!glyph) return;
+  fitGlyphToInk(el, glyph);
   nodes.forEach((node) => {
     node.style.transform = "";
   });
   const { x, y } = inkOffsetToOrigin(el, glyph);
-  const t = `translate(${x}px, ${y}px)`;
-  nodes.forEach((node) => {
-    node.style.transform = t;
-  });
+  let ty = y;
+  const paint = () => {
+    const t = `translate(${x}px, ${ty}px)`;
+    nodes.forEach((node) => {
+      node.style.transform = t;
+    });
+  };
+  paint();
+  if (lift) {
+    ty += liftInkIntoBox(el, glyph) + 20;
+    paint();
+  }
 }
 
 function paintFace(el, family, weight) {
@@ -45,6 +54,7 @@ function clearFace(el) {
   el.querySelectorAll(".tfx-glyph, .tfx-glow").forEach((node) => {
     node.style.fontFamily = "";
     node.style.fontWeight = "";
+    node.style.fontSize = "";
     node.style.transform = "";
   });
 }
@@ -55,6 +65,7 @@ function restore(el) {
   el.style.fontWeight = "";
   clearFace(el);
   paintText(el, el.dataset.tfxChar || "");
+  restoreCharBox(el);
 }
 
 export function fontCycle(opts, api) {
@@ -84,7 +95,11 @@ export function fontCycle(opts, api) {
       paintFace(el, spec, weight);
       paintText(el, home);
     }
-    alignInk(el);
+    alignInk(el, Boolean(glyph));
+  }
+
+  function tick(el, spec) {
+    apply(el, spec);
     api.root.dispatchEvent(new Event("tfxcycle"));
   }
 
@@ -97,20 +112,16 @@ export function fontCycle(opts, api) {
     halt();
     if (!fonts.length) return;
     index = 0;
-    apply(el, fonts[0]);
+    tick(el, fonts[0]);
     timer = window.setInterval(() => {
       index = (index + 1) % fonts.length;
-      if (current) apply(current, fonts[index]);
+      if (current) tick(current, fonts[index]);
     }, opts.interval ?? 90);
   }
 
   function stop(el) {
     halt();
-    if (el?.dataset.tfxLock) {
-      apply(el, el.dataset.tfxLock);
-    } else if (el) {
-      restore(el);
-    }
+    if (el) restore(el);
     current = null;
     original = "";
   }
@@ -121,28 +132,11 @@ export function fontCycle(opts, api) {
       if (current && current !== el) stop(current);
       current = el;
       original = el.dataset.tfxChar || el.querySelector(".tfx-glyph")?.textContent || "";
-      if (el.dataset.tfxLock) {
-        apply(el, el.dataset.tfxLock);
-        return;
-      }
       startCycle(el, fontsOf());
-    },
-    click({ el }) {
-      if (!el) return;
-      const fonts = fontsOf();
-      if (el.dataset.tfxLock) {
-        delete el.dataset.tfxLock;
-        if (el === current) startCycle(el, fonts);
-        else restore(el);
-        return;
-      }
-      if (el !== current || !fonts.length) return;
-      el.dataset.tfxLock = fonts[index] || "";
-      halt();
     },
     leave({ el }) {
       if (el === current) stop(el);
-      else if (el && !el.dataset.tfxLock) restore(el);
+      else if (el) restore(el);
     },
     leaveField() {
       stop(current);

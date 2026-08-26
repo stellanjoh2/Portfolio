@@ -4,6 +4,11 @@
   padding: 28px 12px;
 }
 
+.tfx-root,
+.tfx-root * {
+  cursor: url("../assets/cursor.svg") 0 0, auto;
+}
+
 .tfx-text {
   position: relative;
   z-index: 1;
@@ -15,7 +20,6 @@
   letter-spacing: inherit;
   font-kerning: none;
   text-rendering: optimizeSpeed;
-  cursor: default;
   user-select: none;
 }
 
@@ -33,7 +37,6 @@
   transform-origin: var(--tfx-ox, 50%) var(--tfx-oy, 50%);
   will-change: transform;
   margin-bottom: calc(1em * (var(--tfx-leading, 1.05) - 1));
-  cursor: pointer;
 }
 
 .tfx-char--hot {
@@ -42,7 +45,7 @@
 
 .tfx-root--boxes .tfx-char:not(.tfx-char--space):not(.tfx-char--hot) {
   outline: 1px solid var(--tfx-color-neutral);
-  outline-offset: 6px;
+  outline-offset: 0.021em;
 }
 
 .tfx-glyph {
@@ -85,8 +88,8 @@
 .tfx-box span::after {
   content: "";
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 0.035em;
+  height: 0.035em;
   pointer-events: none;
 }
 
@@ -146,7 +149,7 @@
   opacity: 0;
   color: var(--tfx-color-letter, #ffffff);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 10px;
+  font-size: 0.035em;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -169,7 +172,7 @@
 
 .tfx-ascii {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 8px;
+  font-size: 0.028em;
   line-height: 1;
   font-weight: 700;
   letter-spacing: 0;

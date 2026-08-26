@@ -7,9 +7,7 @@ export const CYCLE_FONTS = [
   '"Coral Pixels", sans-serif',
   '"Manufacturing Consent", sans-serif',
   '"DotGothic16", sans-serif',
-  '"Bytesized", sans-serif',
   "glyph:D",
-  "glyph:h",
 ];
 
 export function defaultConfig() {
@@ -21,14 +19,14 @@ export function defaultConfig() {
       fontSize: 283,
       letterSpacing: -0.06,
       lineHeight: 0.95,
-      width: 2400,
+      width: 2090,
       align: "center",
       color: "#3600b3",
     },
     hover: {
       duration: 0.18,
       ease: "elastic.out(1, 0.5)",
-      originY: 47,
+      originY: 50,
     },
     word: {
       effects: [
@@ -39,7 +37,7 @@ export function defaultConfig() {
     letter: {
       effects: [
         { type: "color", color: "#ffffff" },
-        { type: "scale", amount: 1.9 },
+        { type: "scale", amount: 1.5 },
         { type: "glow", size: 4, color: "#ffffff" },
         {
           type: "fontCycle",
