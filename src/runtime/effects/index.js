@@ -2,6 +2,7 @@ import { ascii } from "./ascii.js";
 import { box } from "./box.js";
 import { color } from "./color.js";
 import { dotgrid } from "./dotgrid.js";
+import { fisheye } from "./fisheye.js";
 import { fontCycle } from "./fontCycle.js";
 import { glow } from "./glow.js";
 import { magnetic } from "./magnetic.js";
@@ -19,4 +20,5 @@ export function registerBuiltins() {
   register("fontCycle", fontCycle);
   register("ascii", ascii);
   register("dotgrid", dotgrid);
+  register("fisheye", fisheye);
 }

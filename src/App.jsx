@@ -160,6 +160,7 @@ export function App() {
   const letterGlowColor = letterGlow?.color ?? "#ffffff";
   const letterScale = getEffect(config, "letter", "scale");
   const magnetic = getEffect(config, "letter", "magnetic");
+  const fisheye = getEffect(config, "letter", "fisheye");
   const cycle = getEffect(config, "letter", "fontCycle");
   const cycleFonts = cycle?.fonts || CYCLE_FONTS;
   const mode = glyphMode(config);
@@ -749,6 +750,55 @@ export function App() {
                       setConfig(
                         patchEffect(config, "letter", "magnetic", {
                           follow: Number(e.target.value),
+                        })
+                      )
+                    }
+                  />
+                </Row>
+              </>
+            )}
+          </Fx>
+          <Fx>
+            <Toggle
+              label="fisheye"
+              checked={hasEffect(config, "letter", "fisheye")}
+              onChange={(on) =>
+                setConfig(
+                  setEffect(config, "letter", "fisheye", on, {
+                    strength: fisheye?.strength ?? 0.85,
+                    radius: fisheye?.radius ?? 2000,
+                  })
+                )
+              }
+            />
+            {hasEffect(config, "letter", "fisheye") && (
+              <>
+                <Row label="bend" value={Number(fisheye?.strength ?? 0.85).toFixed(2)}>
+                  <input
+                    type="range"
+                    min="0.15"
+                    max="1"
+                    step="0.01"
+                    value={fisheye?.strength ?? 0.85}
+                    onChange={(e) =>
+                      setConfig(
+                        patchEffect(config, "letter", "fisheye", {
+                          strength: Number(e.target.value),
+                        })
+                      )
+                    }
+                  />
+                </Row>
+                <Row label="radius" value={fisheye?.radius ?? 2000}>
+                  <input
+                    type="range"
+                    min="200"
+                    max="2500"
+                    value={fisheye?.radius ?? 2000}
+                    onChange={(e) =>
+                      setConfig(
+                        patchEffect(config, "letter", "fisheye", {
+                          radius: Number(e.target.value),
                         })
                       )
                     }

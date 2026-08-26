@@ -45,6 +45,7 @@ export function defaultConfig() {
           interval: 90,
         },
         { type: "magnetic", strength: 80, radius: 360, follow: 1.2 },
+        { type: "fisheye", strength: 0.85, radius: 2000 },
         { type: "sound" },
         { type: "box", details: false, extraWidth: 0 },
       ],

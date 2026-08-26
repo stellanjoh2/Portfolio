@@ -186,6 +186,18 @@
   height: 100%;
 }
 
+.tfx-fisheye {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  display: block;
+}
+
+.tfx-root--fisheye .tfx-text,
+.tfx-root--fisheye .tfx-hud {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tfx-char {
     will-change: auto;
