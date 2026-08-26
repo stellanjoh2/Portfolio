@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TextFX embed</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #000;
+        color: #8a8a8a;
+      }
+      .headline {
+        max-width: 1100px;
+        padding: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="headline"></div>
+    <script src="./dist/lib/textfx.iife.js"></script>
+    <script>
+      TextFX.mount(".headline", TextFX.defaultConfig());
+    </script>
+  </body>
+</html>
