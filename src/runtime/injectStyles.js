@@ -1,12 +1,13 @@
 import css from "./styles.css?inline";
 
-let injected = false;
-
 export function injectStyles() {
-  if (injected || document.getElementById("tfx-styles")) return;
-  injected = true;
-  const style = document.createElement("style");
-  style.id = "tfx-styles";
+  let style = document.getElementById("tfx-styles");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "tfx-styles";
+    document.head.appendChild(style);
+  }
   style.textContent = css;
-  document.head.appendChild(style);
 }
+
+if (typeof document !== "undefined") injectStyles();

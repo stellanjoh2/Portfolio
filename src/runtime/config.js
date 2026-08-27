@@ -1,6 +1,10 @@
+import videoUrl from "../assets/featureloop-virtualstudio.mp4?url";
+
 export const DEFAULT_TEXT = "Welcome to my stupid homepage";
 
 export const DEFAULT_BASE_FONT = '"PP Monument Wide"';
+
+export const DEFAULT_VIDEO = videoUrl;
 
 export const CYCLE_FONTS = [
   '"Pixelify Sans", sans-serif',
@@ -16,10 +20,10 @@ export function defaultConfig() {
     base: {
       fontFamily: DEFAULT_BASE_FONT,
       fontWeight: 900,
-      fontSize: 283,
+      fontSize: 212,
       letterSpacing: -0.06,
       lineHeight: 0.95,
-      width: 2090,
+      width: 1568,
       align: "center",
       color: "#3600b3",
     },
@@ -45,10 +49,19 @@ export function defaultConfig() {
           interval: 90,
         },
         { type: "magnetic", strength: 80, radius: 360, follow: 1.2 },
-        { type: "fisheye", strength: 0.85, radius: 2000 },
+        { type: "fisheye", strength: 1, radius: 2661, look: 1 },
         { type: "sound" },
-        { type: "box", details: false, extraWidth: 0 },
+        { type: "box", details: true, extraWidth: 0 },
       ],
+    },
+    video: {
+      src: DEFAULT_VIDEO,
+      scale: 1.45,
+      z: 1.4,
+      front: 0.165,
+      radius: 36,
+      parallax: 0.95,
+      interlace: 8,
     },
   };
 }
@@ -69,6 +82,7 @@ export function normalizeConfig(input = {}) {
         ? input.letter.effects
         : d.letter.effects,
     },
+    video: { ...d.video, ...(input.video || {}) },
   };
 }
 

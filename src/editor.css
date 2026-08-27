@@ -17,13 +17,21 @@
   cursor: url("./assets/cursor.svg") 0 0, auto;
 }
 
-html,
+html {
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--ink);
+}
+
 body,
 #root {
   margin: 0;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  height: auto;
+  overflow: visible;
   background: var(--bg);
   color: var(--ink);
 }
@@ -34,15 +42,49 @@ body {
 
 .shell {
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  overflow: visible;
   background: var(--bg);
 }
 
+.hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  container-type: size;
+  background: #000;
+}
+
+@font-face {
+  font-family: "PP Monument Wide";
+  src: url("./runtime/fonts/PPMonumentWide-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+.hero-logo {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  z-index: 5;
+  color: #fff;
+  font-family: "PP Monument Wide", sans-serif;
+  font-weight: 900;
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+  user-select: none;
+}
+
 .artboard {
-  --tfx-scale: calc(100vw / 2560px);
+  --tfx-scale: calc(100cqi / 2560px);
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 2560px;
-  height: calc(100% / var(--tfx-scale));
+  height: calc(100cqb / var(--tfx-scale));
   transform: scale(var(--tfx-scale));
   transform-origin: 0 0;
 }
@@ -89,6 +131,11 @@ body {
 
 .preview {
   width: auto;
+}
+
+.site {
+  min-height: 100vh;
+  background: #808080;
 }
 
 .panel {

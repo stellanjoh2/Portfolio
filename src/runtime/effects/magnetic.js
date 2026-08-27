@@ -105,6 +105,13 @@ export function magnetic(opts, api) {
         overwrite: false,
       });
     },
+    pause() {
+      hovering = false;
+      killTrackers();
+      const nodes = chars();
+      api.gsap.killTweensOf(nodes, "x,y");
+      api.gsap.set(nodes, { x: 0, y: 0 });
+    },
     update(next) {
       Object.assign(opts, next);
       killTrackers();

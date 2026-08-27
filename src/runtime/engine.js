@@ -22,12 +22,16 @@ export function createEngine(root, initialConfig) {
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
+  let paused = false;
+  let listening = false;
+
   const api = {
     root,
     gsap,
     reduceMotion,
     getHover: () => hover,
     getConfig: () => config,
+    isPaused: () => paused,
   };
 
   function makeCtx(extra = {}) {
@@ -99,11 +103,52 @@ export function createEngine(root, initialConfig) {
   }
 
   function onMove(e) {
+    if (paused) return;
     hover.pointer = { x: e.clientX, y: e.clientY };
     setHovered(charFromPoint(e.clientX, e.clientY));
     const ctx = makeCtx();
     fire(effects.word, "move", ctx);
     fire(effects.letter, "move", ctx);
+  }
+
+  function attachPointer() {
+    if (listening) return;
+    listening = true;
+    root.addEventListener("pointermove", onMove);
+    root.addEventListener("pointerleave", onLeaveField);
+  }
+
+  function detachPointer() {
+    if (!listening) return;
+    listening = false;
+    root.removeEventListener("pointermove", onMove);
+    root.removeEventListener("pointerleave", onLeaveField);
+  }
+
+  function pauseMedia() {
+    root.querySelectorAll("video").forEach((video) => video.pause());
+  }
+
+  function resumeMedia() {
+    root.querySelectorAll("video").forEach((video) => {
+      video.play().catch(() => {});
+    });
+  }
+
+  function pause() {
+    if (paused) return;
+    paused = true;
+    detachPointer();
+    onLeaveField();
+    fire(allEffects(effects), "pause", makeCtx());
+    pauseMedia();
+  }
+
+  function resume() {
+    paused = false;
+    attachPointer();
+    resumeMedia();
+    fire(allEffects(effects), "resume", makeCtx());
   }
 
   function onLeaveField() {
@@ -124,13 +169,16 @@ export function createEngine(root, initialConfig) {
     splitBag = await splitRoot(root, config, () => cancelled);
     if (cancelled || !splitBag) return;
     buildEffects();
-    root.addEventListener("pointermove", onMove);
-    root.addEventListener("pointerleave", onLeaveField);
+    if (paused) {
+      fire(allEffects(effects), "pause", makeCtx());
+      pauseMedia();
+    } else {
+      attachPointer();
+    }
   }
 
   function teardownSplit() {
-    root.removeEventListener("pointermove", onMove);
-    root.removeEventListener("pointerleave", onLeaveField);
+    detachPointer();
     onLeaveField();
     destroyEffects();
     splitBag?.split?.revert();
@@ -192,12 +240,19 @@ export function createEngine(root, initialConfig) {
         buildEffects();
         hover.wordEl = wordEl;
         hover.charEl = charEl;
-        reenter();
+        if (paused) {
+          fire(allEffects(effects), "pause", makeCtx());
+          pauseMedia();
+        } else {
+          reenter();
+        }
         return;
       }
 
       patchEffects();
     },
+    pause,
+    resume,
     destroy() {
       cancelled = true;
       teardownSplit();

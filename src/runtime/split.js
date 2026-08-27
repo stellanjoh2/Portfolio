@@ -5,6 +5,25 @@ import { pinGlyphOrigin } from "./glyphBounds.js";
 
 gsap.registerPlugin(SplitText);
 
+function makeVideo(video) {
+  if (!video?.src) return null;
+  const el = document.createElement("video");
+  el.className = "tfx-video";
+  el.src = video.src;
+  el.muted = true;
+  el.defaultMuted = true;
+  el.loop = true;
+  el.playsInline = true;
+  el.autoplay = true;
+  el.preload = "auto";
+  el.setAttribute("muted", "");
+  el.setAttribute("playsinline", "");
+  el.setAttribute("webkit-playsinline", "");
+  el.setAttribute("aria-hidden", "true");
+  el.play().catch(() => {});
+  return el;
+}
+
 export function applyBase(root, config) {
   root.style.fontFamily = config.base.fontFamily;
   root.style.fontWeight = String(config.base.fontWeight);
@@ -20,6 +39,7 @@ export function applyBase(root, config) {
   root.style.color = config.base.color;
   root.style.setProperty("--tfx-color-neutral", config.base.color);
   root.style.setProperty("--tfx-oy", `${config.hover.originY ?? 50}%`);
+  root.style.setProperty("--tfx-video-scale", String(config.video?.scale ?? 1));
   root.querySelectorAll(".tfx-char").forEach((char) => {
     char.classList.toggle("tfx-char--space", !String(char.dataset.tfxChar || "").trim());
   });
@@ -41,7 +61,8 @@ export async function splitRoot(root, config, isAborted = () => false) {
     <div class="tfx-box tfx-box--letter"><span></span></div>
     <div class="tfx-details"></div>
   `;
-  root.replaceChildren(textEl, hud);
+  const videoEl = makeVideo(config.video);
+  root.replaceChildren(...[videoEl, textEl, hud].filter(Boolean));
 
   await injectFonts();
   await document.fonts.ready;

@@ -40,6 +40,12 @@ export function mount(target, userConfig) {
       });
       return chain;
     },
+    pause() {
+      engine.pause();
+    },
+    resume() {
+      engine.resume();
+    },
     destroy() {
       dead = true;
       engine.destroy();

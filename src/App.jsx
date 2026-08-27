@@ -105,6 +105,7 @@ function bestLocalFace(faces, targetWeight) {
 
 export function App() {
   const stageRef = useRef(null);
+  const heroRef = useRef(null);
   const instRef = useRef(null);
   const fontFileRef = useRef(null);
   const fontsLoaded = useRef(false);
@@ -123,7 +124,18 @@ export function App() {
     const inst = mount(stageRef.current, config);
     instRef.current = inst;
     skipUpdate.current = true;
+
+    const hero = heroRef.current;
+    function sync() {
+      if (!hero) return;
+      if (hero.getBoundingClientRect().bottom <= 0) inst.pause();
+      else inst.resume();
+    }
+    document.addEventListener("scroll", sync, { passive: true, capture: true });
+    sync();
+
     return () => {
+      document.removeEventListener("scroll", sync, { capture: true });
       inst.destroy();
       instRef.current = null;
     };
@@ -260,6 +272,8 @@ export function App() {
 
   return (
     <div className="shell">
+    <div className="hero" ref={heroRef}>
+    {/* <div className="hero-logo" aria-hidden="true">S</div> */}
     <div className="artboard">
     <div className={uiHidden ? "editor editor--ui-hidden" : "editor"}>
       <div className="stage">
@@ -453,6 +467,84 @@ export function App() {
                 setConfig({
                   ...config,
                   base: { ...config.base, lineHeight: Number(e.target.value) },
+                })
+              }
+            />
+          </Row>
+        </Section>
+
+        <Section title="Video">
+          <Row label="scale" value={`${Number(config.video?.scale ?? 1).toFixed(2)}×`}>
+            <input
+              type="range"
+              min="0.2"
+              max="4"
+              step="0.05"
+              value={config.video?.scale ?? 1}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  video: { ...config.video, scale: Number(e.target.value) },
+                })
+              }
+            />
+          </Row>
+          <Row label="z" value={Number(config.video?.z ?? 0).toFixed(2)}>
+            <input
+              type="range"
+              min="0"
+              max="2.5"
+              step="0.05"
+              value={config.video?.z ?? 0}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  video: { ...config.video, z: Number(e.target.value) },
+                })
+              }
+            />
+          </Row>
+          <Row label="round" value={Math.round(config.video?.radius ?? 0)}>
+            <input
+              type="range"
+              min="0"
+              max="160"
+              step="1"
+              value={config.video?.radius ?? 0}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  video: { ...config.video, radius: Number(e.target.value) },
+                })
+              }
+            />
+          </Row>
+          <Row label="parallax" value={Number(config.video?.parallax ?? 1).toFixed(2)}>
+            <input
+              type="range"
+              min="0"
+              max="2.5"
+              step="0.05"
+              value={config.video?.parallax ?? 1}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  video: { ...config.video, parallax: Number(e.target.value) },
+                })
+              }
+            />
+          </Row>
+          <Row label="interlace" value={`${Number(config.video?.interlace ?? 1).toFixed(2)}×`}>
+            <input
+              type="range"
+              min="0.25"
+              max="8"
+              step="0.25"
+              value={config.video?.interlace ?? 1}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  video: { ...config.video, interlace: Number(e.target.value) },
                 })
               }
             />
@@ -669,6 +761,21 @@ export function App() {
             />
             {hasEffect(config, "letter", "box") && (
               <>
+                <Row label="front" value={Number(config.video?.front ?? 0).toFixed(3)}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.005"
+                    value={config.video?.front ?? 0}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        video: { ...config.video, front: Number(e.target.value) },
+                      })
+                    }
+                  />
+                </Row>
                 <Row label="pad" value={Number(getEffect(config, "letter", "box")?.extraWidth ?? 0).toFixed(2)}>
                   <input
                     type="range"
@@ -765,21 +872,22 @@ export function App() {
               onChange={(on) =>
                 setConfig(
                   setEffect(config, "letter", "fisheye", on, {
-                    strength: fisheye?.strength ?? 0.85,
-                    radius: fisheye?.radius ?? 2000,
+                    strength: fisheye?.strength ?? 1,
+                    radius: fisheye?.radius ?? 2302,
+                    look: fisheye?.look ?? 0.4,
                   })
                 )
               }
             />
             {hasEffect(config, "letter", "fisheye") && (
               <>
-                <Row label="bend" value={Number(fisheye?.strength ?? 0.85).toFixed(2)}>
+                <Row label="bend" value={Number(fisheye?.strength ?? 1).toFixed(2)}>
                   <input
                     type="range"
                     min="0.15"
                     max="1"
                     step="0.01"
-                    value={fisheye?.strength ?? 0.85}
+                    value={fisheye?.strength ?? 1}
                     onChange={(e) =>
                       setConfig(
                         patchEffect(config, "letter", "fisheye", {
@@ -789,16 +897,32 @@ export function App() {
                     }
                   />
                 </Row>
-                <Row label="radius" value={fisheye?.radius ?? 2000}>
+                <Row label="radius" value={fisheye?.radius ?? 2302}>
                   <input
                     type="range"
                     min="200"
-                    max="2500"
-                    value={fisheye?.radius ?? 2000}
+                    max="6000"
+                    value={fisheye?.radius ?? 2302}
                     onChange={(e) =>
                       setConfig(
                         patchEffect(config, "letter", "fisheye", {
                           radius: Number(e.target.value),
+                        })
+                      )
+                    }
+                  />
+                </Row>
+                <Row label="3d" value={Number(fisheye?.look ?? 0.4).toFixed(2)}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={fisheye?.look ?? 0.4}
+                    onChange={(e) =>
+                      setConfig(
+                        patchEffect(config, "letter", "fisheye", {
+                          look: Number(e.target.value),
                         })
                       )
                     }
@@ -871,6 +995,8 @@ export function App() {
       </aside>
     </div>
     </div>
+    </div>
+    <section className="site" aria-label="site" />
     </div>
   );
 }
