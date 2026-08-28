@@ -1,6 +1,6 @@
 import gsap from "gsap";
 import { effectTypes, normalizeVideo, resolveConfig } from "./config.js";
-import { idleSafariVideo, moveSafariVideo } from "./safariVideo.js";
+import { bindSafariVideoParallax, idleSafariVideo } from "./safariVideo.js";
 import { createEffect } from "./registry.js";
 import { applyBase, splitRoot } from "./split.js";
 
@@ -25,6 +25,7 @@ export function createEngine(root, initialConfig) {
 
   let paused = false;
   let listening = false;
+  let unbindSafariVideo = null;
 
   const api = {
     root,
@@ -108,7 +109,6 @@ export function createEngine(root, initialConfig) {
     if (paused) return;
     hover.pointer = { x: e.clientX, y: e.clientY };
     setHovered(charFromPoint(e.clientX, e.clientY));
-    moveSafariVideo(root, resolveConfig(config).video, hover.pointer);
     const ctx = makeCtx();
     fire(effects.word, "move", ctx);
     fire(effects.letter, "move", ctx);
@@ -119,6 +119,7 @@ export function createEngine(root, initialConfig) {
     listening = true;
     root.addEventListener("pointermove", onMove);
     root.addEventListener("pointerleave", onLeaveField);
+    unbindSafariVideo = bindSafariVideoParallax(root, () => resolveConfig(config).video);
   }
 
   function detachPointer() {
@@ -126,6 +127,8 @@ export function createEngine(root, initialConfig) {
     listening = false;
     root.removeEventListener("pointermove", onMove);
     root.removeEventListener("pointerleave", onLeaveField);
+    unbindSafariVideo?.();
+    unbindSafariVideo = null;
   }
 
   function pauseMedia() {
@@ -143,6 +146,7 @@ export function createEngine(root, initialConfig) {
     paused = true;
     detachPointer();
     onLeaveField();
+    idleSafariVideo(root, resolveConfig(config).video);
     fire(allEffects(effects), "pause", makeCtx());
     pauseMedia();
   }
@@ -163,7 +167,6 @@ export function createEngine(root, initialConfig) {
     }
     hover.charEl = null;
     hover.wordEl = null;
-    idleSafariVideo(root, resolveConfig(config).video);
     fire(allEffects(effects), "leaveField", makeCtx());
   }
 

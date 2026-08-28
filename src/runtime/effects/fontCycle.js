@@ -1,5 +1,5 @@
 import { SKULLZ_FAMILY } from "../injectFonts.js";
-import { fitGlyphToInk, inkOffsetToOrigin, restoreCharBox } from "../glyphBounds.js";
+import { restoreCharBox } from "../glyphBounds.js";
 
 function glyphOf(spec) {
   if (typeof spec !== "string" || !spec.startsWith("glyph:")) return null;
@@ -20,18 +20,13 @@ function paintText(el, text) {
   });
 }
 
-function alignInk(el, lift = false) {
-  const glyph = el.querySelector(".tfx-glyph");
-  const nodes = el.querySelectorAll(".tfx-glyph, .tfx-glow");
-  if (!glyph) return;
-  fitGlyphToInk(el, glyph);
-  nodes.forEach((node) => {
-    node.style.transform = "";
-  });
-  const { x, y } = inkOffsetToOrigin(el, glyph, { snapBottom: true });
-  let ty = lift ? y - el.offsetHeight * 0.25 : y;
-  const t = `translate(${x}px, ${ty}px)`;
-  nodes.forEach((node) => {
+const SKULL_SIZE = 0.6375;
+
+function homeTransform(el, fontScale = 1) {
+  const y = Number(el.dataset.tfxLetterY) || 0;
+  const t = y ? `translateY(${y}px)` : "";
+  el.querySelectorAll(".tfx-glyph, .tfx-glow").forEach((node) => {
+    node.style.fontSize = fontScale === 1 ? "" : `${fontScale}em`;
     node.style.transform = t;
   });
 }
@@ -59,6 +54,7 @@ function restore(el) {
   clearFace(el);
   paintText(el, el.dataset.tfxChar || "");
   restoreCharBox(el);
+  homeTransform(el);
 }
 
 export function fontCycle(opts, api) {
@@ -82,13 +78,14 @@ export function fontCycle(opts, api) {
     if (glyph) {
       paintFace(el, `"${SKULLZ_FAMILY}"`, "400");
       paintText(el, glyph);
+      homeTransform(el, SKULL_SIZE);
     } else {
       const base = api.getConfig().base || {};
       const weight = faceName(spec) === faceName(base.fontFamily) ? String(base.fontWeight || 400) : "400";
       paintFace(el, spec, weight);
       paintText(el, home);
+      homeTransform(el);
     }
-    alignInk(el, Boolean(glyph));
   }
 
   function tick(el, spec) {

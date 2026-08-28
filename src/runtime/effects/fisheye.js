@@ -1,4 +1,5 @@
 import { isSafari } from "../browser.js";
+import { glyphAnchor, inkClientRect } from "../glyphBounds.js";
 
 const VS = `#version 300 es
 in vec2 aPos;
@@ -22,16 +23,17 @@ uniform float uRadius;
 uniform float uVideoZ;
 uniform float uHudZ;
 uniform float uParallax;
+uniform float uChroma;
 
 vec4 sampleLayer(sampler2D tex, vec2 uv) {
   if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec4(0.0);
   return texture(tex, uv);
 }
 
-void main() {
+vec4 scene(vec2 uv) {
   vec2 look = uCenter;
   vec2 world = vec2(0.5);
-  vec2 px = (vUv - look) * uResolution;
+  vec2 px = (uv - look) * uResolution;
   float r = length(px);
   float R = max(uRadius, 1.0);
   float nr = min(r / R, 1.0);
@@ -39,23 +41,39 @@ void main() {
   float bulge = k * 0.32 * (1.0 - nr * nr);
   vec2 travel = look - world;
 
-  vec2 textUv = look + (vUv - look) * (1.0 - bulge);
+  vec2 textUv = look + (uv - look) * (1.0 - bulge);
   vec4 text = sampleLayer(uTex, textUv);
 
   float z = max(uVideoZ, 0.0);
   float far = 1.0 + z;
-  vec2 farUv = look + (vUv - look) * (1.0 - bulge);
+  vec2 farUv = look + (uv - look) * (1.0 - bulge);
   vec2 videoUv = world + (farUv - world - travel * (1.0 - 1.0 / far) * uParallax) * far;
   vec4 video = sampleLayer(uVideo, videoUv);
 
   float hz = max(uHudZ, 0.0);
   float near = 1.0 + hz;
-  vec2 nearUv = look + (vUv - look) * (1.0 - min(bulge * near, 0.92));
+  vec2 nearUv = look + (uv - look) * (1.0 - min(bulge * near, 0.92));
   vec2 hudUv = world + (nearUv - world + travel * (1.0 - 1.0 / near) * uParallax) / near;
   vec4 hud = sampleLayer(uHud, hudUv);
 
   vec4 mid = text + video * (1.0 - text.a);
-  fragColor = hud + mid * (1.0 - hud.a);
+  return hud + mid * (1.0 - hud.a);
+}
+
+void main() {
+  vec2 px = (vUv - uCenter) * uResolution;
+  float r = length(px);
+  vec2 ndir = r > 1.0 ? px / r : vec2(0.0);
+  float falloff = 0.4 + 0.8 * (r / max(length(uResolution) * 0.5, 1.0));
+  vec2 shift = ndir * (uChroma * 96.0 * falloff) / uResolution;
+  vec4 cg = scene(vUv);
+  if (uChroma < 0.001) {
+    fragColor = cg;
+    return;
+  }
+  vec4 cr = scene(vUv + shift);
+  vec4 cb = scene(vUv - shift);
+  fragColor = vec4(cr.r, cg.g, cb.b, max(max(cr.a, cg.a), cb.a));
 }`;
 
 function shader(gl, type, src) {
@@ -131,6 +149,7 @@ function makeGL(canvas) {
   const uVideoZ = gl.getUniformLocation(prog, "uVideoZ");
   const uHudZ = gl.getUniformLocation(prog, "uHudZ");
   const uParallax = gl.getUniformLocation(prog, "uParallax");
+  const uChroma = gl.getUniformLocation(prog, "uChroma");
 
   return {
     resize(w, h) {
@@ -150,7 +169,7 @@ function makeGL(canvas) {
       gl.bindTexture(gl.TEXTURE_2D, texHud);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, hudSource);
     },
-    draw(state, cssW, cssH, radius, video = {}) {
+    draw(state, cssW, cssH, radius, video = {}, chroma = 0) {
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(prog);
@@ -167,6 +186,7 @@ function makeGL(canvas) {
       gl.uniform1f(uVideoZ, Math.max(0, Number(video.z) || 0));
       gl.uniform1f(uHudZ, Math.max(0, Number(video.front) || 0));
       gl.uniform1f(uParallax, video.parallax == null ? 1 : Math.max(0, Number(video.parallax)));
+      gl.uniform1f(uChroma, Math.max(0, Number(chroma) || 0));
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },
     destroy() {
@@ -193,6 +213,33 @@ function localFromClient(el, clientX, clientY) {
   };
 }
 
+function scaledGlyphCenter(char, glyph, gsap) {
+  const scale = Number(gsap.getProperty(char, "scale")) || 1;
+  const mx = Number(gsap.getProperty(char, "x")) || 0;
+  const my = Number(gsap.getProperty(char, "y")) || 0;
+  const parts = getComputedStyle(char).transformOrigin.split(" ");
+  const ox = parseFloat(parts[0]) || char.offsetWidth / 2;
+  const oy = parseFloat(parts[1]) || char.offsetHeight / 2;
+  const cr = char.getBoundingClientRect();
+  const layoutLeft = cr.left - mx - ox * (1 - scale);
+  const layoutTop = cr.top - my - oy * (1 - scale);
+  const anchor = glyphAnchor(glyph);
+  const homeY = Number(char.dataset.tfxAnchorY);
+  let gx = glyph.offsetLeft + anchor.x;
+  let gy = glyph.offsetTop + (Number.isFinite(homeY) ? homeY : anchor.y);
+  const gt = getComputedStyle(glyph).transform;
+  if (gt && gt !== "none") {
+    const m = new DOMMatrix(gt);
+    gx += m.e;
+    gy += m.f;
+  }
+  return {
+    x: layoutLeft + ox + (gx - ox) * scale + mx,
+    y: layoutTop + oy + (gy - oy) * scale + my,
+    scale,
+  };
+}
+
 function localRect(el, box) {
   const r = el.getBoundingClientRect();
   const sx = r.width ? el.clientWidth / r.width : 1;
@@ -203,6 +250,19 @@ function localRect(el, box) {
     w: box.width * sx,
     h: box.height * sy,
   };
+}
+
+function backingSize(cssW, cssH) {
+  const dpr = Math.min(1.25, window.devicePixelRatio || 1);
+  let bw = Math.max(1, Math.round(cssW * dpr));
+  let bh = Math.max(1, Math.round(cssH * dpr));
+  const edge = Math.max(bw, bh);
+  if (edge > 1920) {
+    const k = 1920 / edge;
+    bw = Math.max(1, Math.round(bw * k));
+    bh = Math.max(1, Math.round(bh * k));
+  }
+  return { bw, bh };
 }
 
 export function fisheye(opts, api) {
@@ -297,9 +357,7 @@ export function fisheye(opts, api) {
     canvas.style.height = `${nextH}px`;
     cssW = nextW;
     cssH = nextH;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const bw = Math.max(1, Math.round(cssW * dpr));
-    const bh = Math.max(1, Math.round(cssH * dpr));
+    const { bw, bh } = backingSize(cssW, cssH);
     gpu.resize(bw, bh);
     if (off.width !== bw) off.width = bw;
     if (off.height !== bh) off.height = bh;
@@ -369,29 +427,23 @@ export function fisheye(opts, api) {
       const ch = glyph.textContent || "";
       if (!ch.trim()) continue;
       const char = glyph.closest(".tfx-char");
-      if (!char) continue;
-      const box = glyph.getBoundingClientRect();
-      if (!box.width || !box.height) continue;
+      if (!char || !char.offsetWidth || !glyph.offsetWidth) continue;
+      const placed = scaledGlyphCenter(char, glyph, api.gsap);
       draws.push({
         ch,
         cs: getComputedStyle(glyph),
-        box,
-        scale: Number(api.gsap.getProperty(char, "scale")) || 1,
+        placed,
         letterHot: char === hover.charEl,
         wordHot: hover.wordEl && hover.wordEl.contains(char),
       });
     }
     for (const draw of draws) {
-      const p = localFromClient(
-        canvas,
-        draw.box.left + draw.box.width / 2,
-        draw.box.top + draw.box.height / 2
-      );
-      const size = (parseFloat(draw.cs.fontSize) || 16) * draw.scale;
+      const p = localFromClient(canvas, draw.placed.x, draw.placed.y);
+      const size = (parseFloat(draw.cs.fontSize) || 16) * draw.placed.scale;
       ctx.font = `${draw.cs.fontStyle} ${draw.cs.fontWeight} ${size}px ${draw.cs.fontFamily}`;
       ctx.fillStyle = draw.cs.color;
       ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      ctx.textBaseline = "alphabetic";
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       if (draw.letterHot && letterGlow) {
@@ -433,8 +485,6 @@ export function fisheye(opts, api) {
   function stampGrid() {
     const config = api.getConfig();
     if (!config.base.boxes) return;
-    const em = parseFloat(getComputedStyle(api.root).fontSize) || 16;
-    const pad = em * 0.021;
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
     ctx.lineJoin = "miter";
@@ -448,14 +498,9 @@ export function fisheye(opts, api) {
       if (char.classList.contains("tfx-char--space") || char.classList.contains("tfx-char--hot")) {
         continue;
       }
-      const box = char.getBoundingClientRect();
+      const box = inkClientRect(char);
       if (!box.width && !box.height) continue;
-      const r = localRect(canvas, {
-        left: box.left - pad,
-        top: box.top - pad,
-        width: box.width + pad * 2,
-        height: box.height + pad * 2,
-      });
+      const r = localRect(canvas, box);
       ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h);
     }
   }
@@ -540,7 +585,14 @@ export function fisheye(opts, api) {
       Math.hypot(lookX, cssH - lookY),
       Math.hypot(cssW - lookX, cssH - lookY)
     );
-    gpu.draw(state, cssW, cssH, Math.max(opts.radius ?? 4200, cover), api.getConfig().video);
+    gpu.draw(
+      state,
+      cssW,
+      cssH,
+      Math.max(opts.radius ?? 4200, cover),
+      api.getConfig().video,
+      opts.chroma ?? 0.85
+    );
   }
 
   function loop() {

@@ -1,3 +1,5 @@
+import { inkClientRect } from "../glyphBounds.js";
+
 function boxEl(api, layer) {
   return api.root.querySelector(`.tfx-box--${layer}`);
 }
@@ -16,7 +18,7 @@ function visualRect(el) {
     let right = -Infinity;
     let bottom = -Infinity;
     for (const char of chars) {
-      const r = char.getBoundingClientRect();
+      const r = inkClientRect(char);
       if (!r.width && !r.height) continue;
       left = Math.min(left, r.left);
       top = Math.min(top, r.top);
@@ -26,6 +28,7 @@ function visualRect(el) {
     if (!Number.isFinite(left)) return el.getBoundingClientRect();
     return { left, top, width: right - left, height: bottom - top };
   }
+  if (el.classList.contains("tfx-char")) return inkClientRect(el);
   return el.getBoundingClientRect();
 }
 
@@ -33,33 +36,29 @@ function emPx(root, em) {
   return (parseFloat(getComputedStyle(root).fontSize) || 16) * em;
 }
 
-function place(node, el, root, gsap, { extraWidth = 0 } = {}) {
+function place(node, el, root, gsap) {
   if (!node || !el) return;
   const r = visualRect(el);
   if (!r) return;
   const b = root.getBoundingClientRect();
-  const pad = emPx(root, 0.021);
-  const extra = r.width * extraWidth;
   gsap.set(node, {
-    x: r.left - b.left - pad - extra / 2,
-    y: r.top - b.top - pad,
-    width: r.width + pad * 2 + extra,
-    height: r.height + pad * 2,
+    x: r.left - b.left,
+    y: r.top - b.top,
+    width: r.width,
+    height: r.height,
   });
 }
 
-function placeDetails(node, el, root, gsap, text, { extraWidth = 0 } = {}) {
+function placeDetails(node, el, root, gsap, text) {
   if (!node || !el) return;
   const r = visualRect(el);
   if (!r) return;
   const b = root.getBoundingClientRect();
-  const pad = emPx(root, 0.021);
-  const extra = r.width * extraWidth;
   const line = emPx(root, 0.035) * 1.3;
   node.textContent = text;
   gsap.set(node, {
-    x: r.left - b.left - pad - extra / 2,
-    y: r.top - b.top - pad - line * 2,
+    x: r.left - b.left,
+    y: r.top - b.top - line * 2,
   });
 }
 
@@ -76,9 +75,7 @@ export function box(opts, api) {
   function sync(ctx) {
     const node = boxEl(api, opts.layer);
     const el = opts.layer === "word" ? ctx.wordEl : ctx.charEl;
-    place(node, el, api.root, api.gsap, {
-      extraWidth: opts.layer === "letter" ? opts.extraWidth ?? 0 : 0,
-    });
+    place(node, el, api.root, api.gsap);
     if (opts.details && opts.layer === "letter" && ctx.charEl) {
       const idx = ctx.charEl.dataset.tfxIndex ?? "";
       const ch = ctx.charEl.querySelector(".tfx-glyph")?.textContent || "";
@@ -87,8 +84,7 @@ export function box(opts, api) {
         ctx.charEl,
         api.root,
         api.gsap,
-        `${codePoint(ctx.charEl)}   ${ch}   ${idx}`,
-        { extraWidth: opts.extraWidth ?? 0 }
+        `${codePoint(ctx.charEl)}   ${ch}   ${idx}`
       );
     } else if (opts.layer === "letter") {
       api.gsap.set(detailsEl(api), { autoAlpha: 0 });

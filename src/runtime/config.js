@@ -11,8 +11,8 @@ export const ENGINE_KEYS = ["chrome", "safari"];
 
 const DEFAULT_VIDEO_TUNING = {
   scale: 1.45,
-  z: 1.4,
-  front: 0.165,
+  z: 1,
+  front: 0.505,
   radius: 36,
   parallax: 0.95,
 };
@@ -40,6 +40,7 @@ export function defaultConfig() {
       width: 1568,
       align: "center",
       color: "#3600b3",
+      boxes: true,
     },
     hover: {
       duration: 0.18,
@@ -63,15 +64,15 @@ export function defaultConfig() {
           interval: 90,
         },
         { type: "magnetic", strength: 80, radius: 360, follow: 1.2 },
-        { type: "fisheye", strength: 1, radius: 2661, look: 1 },
+        { type: "fisheye", strength: 1, radius: 2661, look: 1, chroma: 0.06 },
         { type: "sound" },
-        { type: "box", details: true, extraWidth: 0 },
+        { type: "box", details: true },
       ],
     },
     video: {
       src: DEFAULT_VIDEO,
       chrome: { ...DEFAULT_VIDEO_TUNING },
-      safari: { scale: DEFAULT_VIDEO_TUNING.scale },
+      safari: { scale: 0.95 },
     },
   };
 }
@@ -93,7 +94,6 @@ export function normalizeVideo(video = {}) {
   const safariScale =
     video.safari?.scale ??
     (hasLegacy ? legacy.scale : undefined) ??
-    chrome.scale ??
     d.safari.scale;
   return {
     src: video.src ?? src ?? d.src,

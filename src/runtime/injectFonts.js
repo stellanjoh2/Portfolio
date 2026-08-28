@@ -24,13 +24,14 @@ function loadFaces() {
   return Promise.all(FACES.map((face) => document.fonts.load(face).catch(() => {})));
 }
 
-async function loadLocalFace(family, url, weight, sample) {
+async function loadLocalFace(family, url, weight, sample, descriptors = {}) {
   if ([...document.fonts].some((face) => face.family.replace(/['"]/g, "") === family)) {
     return document.fonts.load(`${weight} 16px "${family}"`, sample).catch(() => {});
   }
   const face = new FontFace(family, `url(${JSON.stringify(url)})`, {
     weight,
     style: "normal",
+    ...descriptors,
   });
   document.fonts.add(await face.load());
   await document.fonts.load(`${weight} 16px "${family}"`, sample);
@@ -49,7 +50,10 @@ async function loadTiltortion() {
 }
 
 async function loadErki30() {
-  return loadLocalFace(ERKI30_FAMILY, erki30Url, "400", "A");
+  return loadLocalFace(ERKI30_FAMILY, erki30Url, "400", "A", {
+    ascentOverride: "104%",
+    descentOverride: "20%",
+  });
 }
 
 async function loadBeast() {

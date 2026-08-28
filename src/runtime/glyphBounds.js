@@ -1,5 +1,3 @@
-const MIN_FIT = 0.2;
-const MAX_FIT = 12;
 const SAMPLE = 64;
 
 const inkCache = new Map();
@@ -59,46 +57,87 @@ function rasterInk(family, weight, text) {
   return result;
 }
 
-function measureBaselinePx(charEl, glyphEl) {
-  const charBox = charEl.getBoundingClientRect();
-  const cs = getComputedStyle(glyphEl);
-  const em = parseFloat(cs.fontSize) || 16;
-  const ctx = canvasCtx();
-  ctx.font = `${cs.fontWeight} ${em}px ${cs.fontFamily}`;
-  const m = ctx.measureText(glyphEl.textContent || charEl.dataset.tfxChar || "H");
-  const ascent = m.fontBoundingBoxAscent ?? m.actualBoundingBoxAscent ?? em * 0.8;
-  const glyphBox = glyphEl.getBoundingClientRect();
-  return glyphBox.top - charBox.top + ascent;
+function clientRect(left, top, width, height) {
+  return {
+    x: left,
+    y: top,
+    left,
+    top,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
+  };
 }
 
-function inkBottomNorm(charEl, glyphEl) {
+export function glyphAnchor(glyphEl) {
+  const text = glyphEl.textContent || "H";
   const cs = getComputedStyle(glyphEl);
-  const text = glyphEl.textContent || charEl.dataset.tfxChar || "";
-  if (!text.trim()) return 1;
-
   const em = parseFloat(cs.fontSize) || 16;
-  const raster = rasterInk(cs.fontFamily, cs.fontWeight, text);
-  const charH = charEl.offsetHeight;
-  if (!charH || !raster.height) return rangeCenter(charEl, glyphEl).bottom;
+  const ow = glyphEl.offsetWidth || 0;
+  const oh = glyphEl.offsetHeight || 0;
+  const ctx = canvasCtx();
+  ctx.font = `${cs.fontWeight} ${em}px ${cs.fontFamily}`;
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  const m = ctx.measureText(text);
+  const fontAscent = m.fontBoundingBoxAscent ?? em * 0.8;
+  const fontDescent = m.fontBoundingBoxDescent ?? em * 0.2;
+  return {
+    x: ow / 2,
+    y: (oh - (fontAscent + fontDescent)) / 2 + fontAscent,
+    em,
+    advance: m.width,
+    fontAscent,
+    fontDescent,
+    left: m.actualBoundingBoxLeft,
+    right: m.actualBoundingBoxRight,
+    ascent: m.actualBoundingBoxAscent,
+    descent: m.actualBoundingBoxDescent,
+    family: cs.fontFamily,
+    weight: cs.fontWeight,
+  };
+}
 
-  const baselinePx = measureBaselinePx(charEl, glyphEl);
-  const scale = em / SAMPLE;
-  return (baselinePx + raster.inkBottom * scale) / charH;
+function trueInkRect(glyphEl) {
+  const text = glyphEl.textContent || "";
+  if (!text.trim()) return null;
+  const glyphBox = glyphEl.getBoundingClientRect();
+  const ow = glyphEl.offsetWidth || 1;
+  const oh = glyphEl.offsetHeight || 1;
+  if (!glyphBox.width || !glyphBox.height) return null;
+  const sx = glyphBox.width / ow;
+  const sy = glyphBox.height / oh;
+  const anchor = glyphAnchor(glyphEl);
+  const originX = glyphBox.left + (ow - anchor.advance) * 0.5 * sx;
+  const homeY = Number(glyphEl.closest(".tfx-char")?.dataset.tfxAnchorY);
+  const baseline = glyphBox.top + (Number.isFinite(homeY) ? homeY : anchor.y) * sy;
+
+  const raster = rasterInk(anchor.family, anchor.weight, text);
+  if (raster.height) {
+    const k = anchor.em / SAMPLE;
+    return clientRect(
+      originX + (raster.centerX * k - raster.width * k * 0.5) * sx,
+      baseline + raster.inkTop * k * sy,
+      raster.width * k * sx,
+      raster.height * k * sy
+    );
+  }
+
+  if (anchor.ascent == null) return null;
+  return clientRect(
+    originX - (anchor.left ?? 0) * sx,
+    baseline - anchor.ascent * sy,
+    ((anchor.right ?? anchor.advance) + (anchor.left ?? 0)) * sx,
+    (anchor.ascent + (anchor.descent ?? 0)) * sy
+  );
 }
 
 function inkBox(charEl, glyphEl) {
   const box = charEl.getBoundingClientRect();
   if (!box.width || !box.height) return null;
-
-  const node = [...glyphEl.childNodes].find(
-    (child) => child.nodeType === Node.TEXT_NODE && child.textContent
-  );
-  if (!node) return null;
-
-  const range = document.createRange();
-  range.selectNodeContents(node);
-  const ink = range.getBoundingClientRect();
-  if (!ink.width && !ink.height) return null;
+  const ink = trueInkRect(glyphEl);
+  if (!ink || (!ink.width && !ink.height)) return null;
   return { box, ink };
 }
 
@@ -109,8 +148,14 @@ function rangeCenter(charEl, glyphEl) {
   return {
     x: (ink.left + ink.width / 2 - box.left) / box.width,
     y: (ink.top + ink.height / 2 - box.top) / box.height,
-    bottom: (ink.bottom - box.top) / box.height,
+    bottom: (ink.top + ink.height - box.top) / box.height,
   };
+}
+
+export function inkClientRect(charEl) {
+  const glyph = charEl.querySelector(".tfx-glyph");
+  if (!glyph) return charEl.getBoundingClientRect();
+  return trueInkRect(glyph) || charEl.getBoundingClientRect();
 }
 
 export function pinGlyphOrigin(charEl, glyphEl) {
@@ -121,31 +166,41 @@ export function pinGlyphOrigin(charEl, glyphEl) {
   charEl.dataset.tfxOx = `${ink.x * 100}%`;
   charEl.dataset.tfxW = String(charEl.offsetWidth);
   charEl.dataset.tfxInkY = String(ink.y);
-  charEl.dataset.tfxInkBottom = String(ink.bottom);
-  const cs = getComputedStyle(glyphEl);
-  const raster = rasterInk(cs.fontFamily, cs.fontWeight, glyphEl.textContent);
-  if (raster.height) charEl.dataset.tfxInkH = String(raster.height);
+  charEl.dataset.tfxAnchorY = String(glyphAnchor(glyphEl).y);
 }
 
-export function fitGlyphToInk(charEl, glyphEl) {
-  const nodes = charEl.querySelectorAll(".tfx-glyph, .tfx-glow");
-  nodes.forEach((node) => {
-    node.style.fontSize = "";
-  });
-  const target = Number(charEl.dataset.tfxInkH);
-  const text = glyphEl.textContent || charEl.dataset.tfxChar || "";
-  if (!target || !text) return;
-  const cs = getComputedStyle(glyphEl);
-  const raster = rasterInk(cs.fontFamily, cs.fontWeight, text);
-  if (!raster.height) return;
-  const em = parseFloat(cs.fontSize) || 16;
-  let factor = Math.min(MAX_FIT, Math.max(MIN_FIT, target / raster.height));
-  const visualH = raster.height * (em / SAMPLE) * factor;
-  const maxH = charEl.offsetHeight;
-  if (maxH && visualH > maxH) factor *= maxH / visualH;
-  if (Math.abs(factor - 1) < 0.03) return;
-  nodes.forEach((node) => {
-    node.style.fontSize = `${factor}em`;
+export function inkShiftY(charEl, glyphEl, t) {
+  const measured = inkBox(charEl, glyphEl);
+  if (!measured) return 0;
+  const { box, ink } = measured;
+  const k = box.height / (charEl.offsetHeight || 1) || 1;
+  const slack = Math.max(0, (box.height - ink.height) / k);
+  const currentTop = (ink.top - box.top) / k;
+  return slack * t - currentTop;
+}
+
+export function placeLetters(root, originY) {
+  const t = Math.max(0, Math.min(100, originY ?? 50)) / 100;
+  root.dataset.tfxOriginY = String(originY ?? 50);
+  root.querySelectorAll(".tfx-char").forEach((char) => {
+    if (char.classList.contains("tfx-char--space")) return;
+    char.dataset.tfxOriginT = String(t);
+    if (char.classList.contains("tfx-char--hot")) return;
+    const glyph = char.querySelector(".tfx-glyph");
+    if (!glyph) return;
+    const nodes = char.querySelectorAll(".tfx-glyph, .tfx-glow");
+    nodes.forEach((node) => {
+      node.style.transform = "";
+    });
+    const y = inkShiftY(char, glyph, t);
+    char.dataset.tfxLetterY = String(y);
+    const tr = y ? `translateY(${y}px)` : "";
+    nodes.forEach((node) => {
+      node.style.transform = tr;
+    });
+    const ink = rangeCenter(char, glyph);
+    char.dataset.tfxInkY = String(ink.y);
+    char.style.setProperty("--tfx-oy", `${ink.y * 100}%`);
   });
 }
 
@@ -159,17 +214,7 @@ export function liftInkIntoBox(charEl, glyphEl) {
   if (!measured) return 0;
   const { box, ink } = measured;
   const parentScaleY = box.height / (charEl.offsetHeight || 1) || 1;
-  if (ink.bottom <= box.bottom + 0.5) return 0;
-  return (box.bottom - ink.bottom) / parentScaleY;
-}
-
-export function inkOffsetToOrigin(charEl, glyphEl, { snapBottom = false } = {}) {
-  const ox = parseFloat(charEl.style.getPropertyValue("--tfx-ox")) / 100 || 0.5;
-  const ink = rangeCenter(charEl, glyphEl);
-  const bottom = inkBottomNorm(charEl, glyphEl);
-  const yTarget = snapBottom ? 1 : Number(charEl.dataset.tfxInkBottom) || 1;
-  return {
-    x: (ox - ink.x) * charEl.offsetWidth,
-    y: (yTarget - bottom) * charEl.offsetHeight,
-  };
+  const inkBottom = ink.top + ink.height;
+  if (inkBottom <= box.bottom + 0.5) return 0;
+  return (box.bottom - inkBottom) / parentScaleY;
 }

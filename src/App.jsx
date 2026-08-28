@@ -626,21 +626,6 @@ export function App() {
               ))}
             </select>
           </Row>
-          <Row label="origin y" value={config.hover.originY ?? 50}>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value={config.hover.originY ?? 50}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  hover: { ...config.hover, originY: Number(e.target.value) },
-                })
-              }
-            />
-          </Row>
           <Fx>
             <Toggle
               label="scale"
@@ -736,6 +721,21 @@ export function App() {
         </Section>
 
         <Section title="Letter">
+          <Row label="origin y" value={config.hover.originY ?? 50}>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={config.hover.originY ?? 50}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  hover: { ...config.hover, originY: Number(e.target.value) },
+                })
+              }
+            />
+          </Row>
           <Fx>
             <Toggle
               label="color"
@@ -799,7 +799,6 @@ export function App() {
                 setConfig(
                   setEffect(config, "letter", "box", on, {
                     details: getEffect(config, "letter", "box")?.details ?? false,
-                    extraWidth: getEffect(config, "letter", "box")?.extraWidth ?? 0,
                   })
                 )
               }
@@ -814,22 +813,6 @@ export function App() {
                     step="0.005"
                     value={chromeTune.front ?? 0}
                     onChange={(e) => setChromeVideo({ front: Number(e.target.value) })}
-                  />
-                </Row>
-                <Row label="pad" value={Number(getEffect(config, "letter", "box")?.extraWidth ?? 0).toFixed(2)}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="0.8"
-                    step="0.05"
-                    value={getEffect(config, "letter", "box")?.extraWidth ?? 0}
-                    onChange={(e) =>
-                      setConfig(
-                        patchEffect(config, "letter", "box", {
-                          extraWidth: Number(e.target.value),
-                        })
-                      )
-                    }
                   />
                 </Row>
                 <Toggle
@@ -916,6 +899,7 @@ export function App() {
                     strength: fisheye?.strength ?? 1,
                     radius: fisheye?.radius ?? 2302,
                     look: fisheye?.look ?? 0.4,
+                    chroma: fisheye?.chroma ?? 0.85,
                   })
                 )
               }
@@ -964,6 +948,22 @@ export function App() {
                       setConfig(
                         patchEffect(config, "letter", "fisheye", {
                           look: Number(e.target.value),
+                        })
+                      )
+                    }
+                  />
+                </Row>
+                <Row label="chroma" value={Number(fisheye?.chroma ?? 0.85).toFixed(2)}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1.5"
+                    step="0.01"
+                    value={fisheye?.chroma ?? 0.85}
+                    onChange={(e) =>
+                      setConfig(
+                        patchEffect(config, "letter", "fisheye", {
+                          chroma: Number(e.target.value),
                         })
                       )
                     }

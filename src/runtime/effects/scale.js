@@ -6,25 +6,24 @@ function dur(api, hover) {
   return api.reduceMotion ? 0 : hover?.duration ?? 0.2;
 }
 
-function originOf(el, hover) {
+function originOf(el) {
   const ox = el.style.getPropertyValue("--tfx-ox") || "50%";
   const inkY = Number(el.dataset.tfxInkY);
-  const base = Number.isFinite(inkY) ? inkY * 100 : 50;
-  const bias = (hover?.originY ?? 50) - 50;
-  return `${ox} ${base + bias}%`;
+  const y = Number.isFinite(inkY) ? inkY * 100 : 50;
+  return `${ox} ${y}%`;
 }
 
 export function scale(opts, api) {
   function grow(el, hover) {
     if (!el) return;
     el.classList.add("tfx-char--hot");
+    api.gsap.set(el, { transformOrigin: originOf(el) });
     api.gsap.killTweensOf(el, "scale,scaleX,scaleY");
     api.gsap.to(el, {
       scale: amountOf(opts),
       duration: dur(api, hover),
       ease: hover?.ease ?? "power2.out",
       overwrite: false,
-      transformOrigin: originOf(el, hover),
     });
   }
 

@@ -35,7 +35,6 @@
 .tfx-char {
   text-align: center;
   transform-origin: var(--tfx-ox, 50%) var(--tfx-oy, 50%);
-  will-change: transform;
   margin-bottom: calc(1em * (var(--tfx-leading, 1.05) - 1));
 }
 
@@ -43,9 +42,14 @@
   z-index: 3;
 }
 
+.tfx-char--hot,
+.tfx-root--magnetic .tfx-char {
+  will-change: transform;
+}
+
 .tfx-root--boxes .tfx-char:not(.tfx-char--space):not(.tfx-char--hot) {
   outline: 1px solid var(--tfx-color-neutral);
-  outline-offset: 0.021em;
+  outline-offset: 0;
 }
 
 .tfx-glyph {
@@ -215,7 +219,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tfx-char {
+  .tfx-char--hot,
+  .tfx-root--magnetic .tfx-char {
     will-change: auto;
   }
 }

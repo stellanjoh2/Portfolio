@@ -1,8 +1,8 @@
 import { injectFonts } from "./injectFonts.js";
-import { applyVideoStyles, idleSafariVideo } from "./safariVideo.js";
+import { applyVideoStyles } from "./safariVideo.js";
 import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
-import { pinGlyphOrigin } from "./glyphBounds.js";
+import { pinGlyphOrigin, placeLetters } from "./glyphBounds.js";
 
 gsap.registerPlugin(SplitText);
 
@@ -39,13 +39,12 @@ export function applyBase(root, config) {
   root.style.marginRight = align === "right" ? "0" : "auto";
   root.style.color = config.base.color;
   root.style.setProperty("--tfx-color-neutral", config.base.color);
-  root.style.setProperty("--tfx-oy", `${config.hover.originY ?? 50}%`);
   applyVideoStyles(root, config.video);
-  idleSafariVideo(root, config.video);
   root.querySelectorAll(".tfx-char").forEach((char) => {
     char.classList.toggle("tfx-char--space", !String(char.dataset.tfxChar || "").trim());
   });
   root.classList.toggle("tfx-root--boxes", Boolean(config.base.boxes));
+  if (root.querySelector(".tfx-char")) placeLetters(root, config.hover.originY ?? 50);
 }
 
 export async function splitRoot(root, config, isAborted = () => false) {
@@ -65,6 +64,7 @@ export async function splitRoot(root, config, isAborted = () => false) {
   `;
   const videoEl = makeVideo(config.video);
   root.replaceChildren(...[videoEl, textEl, hud].filter(Boolean));
+  applyVideoStyles(root, config.video);
 
   await injectFonts();
   await document.fonts.ready;
@@ -108,6 +108,7 @@ export async function splitRoot(root, config, isAborted = () => false) {
     char.append(wordGlow, letterGlow, glyph);
     pinGlyphOrigin(char, glyph);
   });
+  placeLetters(root, config.hover.originY ?? 50);
 
   if (isAborted()) {
     split.revert();

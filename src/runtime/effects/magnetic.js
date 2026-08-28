@@ -7,6 +7,10 @@ export function magnetic(opts, api) {
     return api.root.querySelectorAll(".tfx-char");
   }
 
+  function promote(on) {
+    api.root.classList.toggle("tfx-root--magnetic", on);
+  }
+
   function capture() {
     const rootB = api.root.getBoundingClientRect();
     rests = [...chars()].map((el) => {
@@ -61,6 +65,7 @@ export function magnetic(opts, api) {
     move({ pointer, charEl }) {
       if (api.reduceMotion) return;
       hovering = true;
+      promote(true);
       if (!rests.length) capture();
       ensureTrackers();
       const rootB = api.root.getBoundingClientRect();
@@ -103,6 +108,9 @@ export function magnetic(opts, api) {
         duration: api.reduceMotion ? 0 : opts.release ?? 0.95,
         ease: opts.releaseEase ?? "elastic.out(1, 0.55)",
         overwrite: false,
+        onComplete() {
+          if (!hovering) promote(false);
+        },
       });
     },
     pause() {
@@ -111,6 +119,7 @@ export function magnetic(opts, api) {
       const nodes = chars();
       api.gsap.killTweensOf(nodes, "x,y");
       api.gsap.set(nodes, { x: 0, y: 0 });
+      promote(false);
     },
     update(next) {
       Object.assign(opts, next);
@@ -120,6 +129,7 @@ export function magnetic(opts, api) {
       window.removeEventListener("resize", onResize);
       killTrackers();
       rests = [];
+      promote(false);
     },
   };
 }
