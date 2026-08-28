@@ -169,30 +169,30 @@ export function pinGlyphOrigin(charEl, glyphEl) {
   charEl.dataset.tfxAnchorY = String(glyphAnchor(glyphEl).y);
 }
 
-export function inkShiftY(charEl, glyphEl, t) {
-  const measured = inkBox(charEl, glyphEl);
-  if (!measured) return 0;
-  const { box, ink } = measured;
-  const k = box.height / (charEl.offsetHeight || 1) || 1;
-  const slack = Math.max(0, (box.height - ink.height) / k);
-  const currentTop = (ink.top - box.top) / k;
-  return slack * t - currentTop;
-}
-
 export function placeLetters(root, originY) {
   const t = Math.max(0, Math.min(100, originY ?? 50)) / 100;
   root.dataset.tfxOriginY = String(originY ?? 50);
-  root.querySelectorAll(".tfx-char").forEach((char) => {
-    if (char.classList.contains("tfx-char--space")) return;
+
+  const chars = [...root.querySelectorAll(".tfx-char")].filter(
+    (char) => !char.classList.contains("tfx-char--space")
+  );
+  chars.forEach((char) => {
     char.dataset.tfxOriginT = String(t);
+  });
+
+  let y = 0;
+  const sample = chars.find((char) => char.querySelector(".tfx-glyph"));
+  if (sample) {
+    const glyph = sample.querySelector(".tfx-glyph");
+    glyph.style.transform = "";
+    y = lineShiftY(glyph, t);
+  }
+
+  chars.forEach((char) => {
     if (char.classList.contains("tfx-char--hot")) return;
     const glyph = char.querySelector(".tfx-glyph");
     if (!glyph) return;
     const nodes = char.querySelectorAll(".tfx-glyph, .tfx-glow");
-    nodes.forEach((node) => {
-      node.style.transform = "";
-    });
-    const y = inkShiftY(char, glyph, t);
     char.dataset.tfxLetterY = String(y);
     const tr = y ? `translateY(${y}px)` : "";
     nodes.forEach((node) => {
@@ -202,6 +202,13 @@ export function placeLetters(root, originY) {
     char.dataset.tfxInkY = String(ink.y);
     char.style.setProperty("--tfx-oy", `${ink.y * 100}%`);
   });
+}
+
+function lineShiftY(glyphEl, t) {
+  const oh = glyphEl.offsetHeight || 1;
+  const anchor = glyphAnchor(glyphEl);
+  const half = (oh - (anchor.fontAscent + anchor.fontDescent)) / 2;
+  return half * (t * 2 - 1);
 }
 
 export function restoreCharBox(charEl) {
