@@ -24,11 +24,16 @@ jobs:
       - run: npm run build:pages
       - name: Push built site to gh-pages branch
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          STAGING=$(mktemp -d)
+          cp -a dist/. "$STAGING/"
+          touch "$STAGING/.nojekyll"
           git checkout --orphan gh-pages-deploy
-          git rm -rf . 2>/dev/null || true
-          cp -r dist/. .
+          git rm -rf --quiet . 2>/dev/null || true
+          git clean -fdx
+          cp -a "$STAGING"/. .
           git add -A
           git commit -m "Deploy GitHub Pages build"
           git push -f origin HEAD:gh-pages
