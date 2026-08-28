@@ -142,6 +142,8 @@ export function App() {
   const [config, setConfig] = useState(() => defaultConfig());
   const [copied, setCopied] = useState(false);
   const [uiHidden, setUiHidden] = useState(true);
+  const [fpsOn, setFpsOn] = useState(false);
+  const [fps, setFps] = useState(0);
   const [systemFonts, setSystemFonts] = useState([]);
   const [fontOpen, setFontOpen] = useState(false);
   const [fontQuery, setFontQuery] = useState("");
@@ -181,16 +183,41 @@ export function App() {
 
   useEffect(() => {
     function onKey(e) {
-      if (e.key !== "h" && e.key !== "H") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = e.target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      e.preventDefault();
-      setUiHidden((hidden) => !hidden);
+      if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        setUiHidden((hidden) => !hidden);
+        return;
+      }
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        setFpsOn((on) => !on);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    if (!fpsOn) return;
+    let frames = 0;
+    let last = performance.now();
+    let raf = 0;
+    function loop(now) {
+      frames += 1;
+      const elapsed = now - last;
+      if (elapsed >= 500) {
+        setFps(Math.round((frames * 1000) / elapsed));
+        frames = 0;
+        last = now;
+      }
+      raf = requestAnimationFrame(loop);
+    }
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [fpsOn]);
 
   const wordColor = getEffect(config, "word", "color")?.color ?? "#e1ff00";
   const letterColor = getEffect(config, "letter", "color")?.color ?? "#ffffff";
@@ -320,6 +347,12 @@ export function App() {
       <div className="stage">
         <div className="preview" ref={stageRef} />
       </div>
+
+      {fpsOn && (
+        <div className="fps" aria-live="polite">
+          {fps} fps
+        </div>
+      )}
 
       {uiHidden && (
         <button className="ui-toggle" type="button" onClick={() => setUiHidden(false)}>

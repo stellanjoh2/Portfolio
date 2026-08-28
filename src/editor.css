@@ -118,6 +118,20 @@ body {
   border-color: #e7e4dc;
 }
 
+.fps {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  color: #8a8a8a;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
+
 .stage {
   position: absolute;
   inset: 0;
