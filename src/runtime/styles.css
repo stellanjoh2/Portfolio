@@ -189,7 +189,16 @@
   aspect-ratio: 16 / 9;
   object-fit: contain;
   pointer-events: none;
+  border-radius: var(--tfx-video-radius, 0);
   transform: translate(-50%, -50%) scale(var(--tfx-video-scale, 1));
+}
+
+.tfx-root--native-video .tfx-text {
+  z-index: 1;
+}
+
+.tfx-root--native-video .tfx-video {
+  z-index: 0;
 }
 
 .tfx-fisheye {

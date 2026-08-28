@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { FONT_CREDITS } from "./fontCredits.js";
+import { isSafari } from "./runtime/browser.js";
 import {
   CYCLE_FONTS,
   defaultConfig,
@@ -7,6 +9,7 @@ import {
   hasEffect,
   mount,
   patchEffect,
+  patchEngineVideo,
   setEffect,
   setGlyphMode,
 } from "./runtime/index.js";
@@ -68,6 +71,31 @@ function SoundSwitch({ on, onChange }) {
   );
 }
 
+function EngineTabs({ value, onChange }) {
+  return (
+    <div className="engine-tabs" role="tablist" aria-label="engine settings">
+      <button
+        type="button"
+        role="tab"
+        className={value === "chrome" ? "is-on" : undefined}
+        aria-selected={value === "chrome"}
+        onClick={() => onChange("chrome")}
+      >
+        chrome
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={value === "safari" ? "is-on" : undefined}
+        aria-selected={value === "safari"}
+        onClick={() => onChange("safari")}
+      >
+        safari
+      </button>
+    </div>
+  );
+}
+
 function displayFont(family) {
   const quoted = String(family).match(/"([^"]+)"/);
   if (quoted) return quoted[1];
@@ -119,6 +147,8 @@ export function App() {
   const [fontQuery, setFontQuery] = useState("");
   const [fontStatus, setFontStatus] = useState("idle");
   const [pendingFont, setPendingFont] = useState(null);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [engineTab, setEngineTab] = useState(() => (isSafari() ? "safari" : "chrome"));
 
   useEffect(() => {
     const inst = mount(stageRef.current, config);
@@ -176,10 +206,15 @@ export function App() {
   const cycle = getEffect(config, "letter", "fontCycle");
   const cycleFonts = cycle?.fonts || CYCLE_FONTS;
   const mode = glyphMode(config);
+  const videoTune = config.video?.[engineTab] ?? config.video?.chrome ?? {};
   const fontNeedle = fontQuery.trim().toLowerCase();
   const fontMatches = fontNeedle
     ? systemFonts.filter((family) => family.toLowerCase().includes(fontNeedle))
     : systemFonts;
+
+  function setVideoTune(patch) {
+    setConfig(patchEngineVideo(config, engineTab, patch));
+  }
 
   function copyConfig() {
     navigator.clipboard.writeText(JSON.stringify(config, null, 2));
@@ -288,17 +323,51 @@ export function App() {
 
       <aside className="panel">
         <header className="panel-head">
-          <h1>TextFX</h1>
+          <h1>
+            <button
+              type="button"
+              className="panel-title"
+              onClick={() => setCreditsOpen((open) => !open)}
+            >
+              TextFX
+            </button>
+          </h1>
           <div className="panel-head-actions">
-            <button className="copy" type="button" onClick={() => setUiHidden(true)}>
-              hide
-            </button>
-            <button className="copy" type="button" onClick={copyConfig}>
-              {copied ? "copied" : "copy"}
-            </button>
+            {creditsOpen ? (
+              <button className="copy" type="button" onClick={() => setCreditsOpen(false)}>
+                back
+              </button>
+            ) : (
+              <>
+                <button className="copy" type="button" onClick={() => setUiHidden(true)}>
+                  hide
+                </button>
+                <button className="copy" type="button" onClick={copyConfig}>
+                  {copied ? "copied" : "copy"}
+                </button>
+              </>
+            )}
           </div>
         </header>
 
+        {creditsOpen ? (
+          <div className="credits">
+            <p className="credits-lead">Open source typefaces used in the hover font cycle.</p>
+            {FONT_CREDITS.map((entry) => (
+              <article key={entry.name} className="credit">
+                <h3 className="credit-name">
+                  {entry.name}
+                  {entry.year ? ` (${entry.year})` : ""}
+                </h3>
+                <p className="credit-by">by {entry.by}</p>
+                {entry.description && <p className="credit-desc">{entry.description}</p>}
+                {entry.note && <p className="credit-note">{entry.note}</p>}
+                {entry.license && <p className="credit-license">{entry.license}</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <>
         <Section title="Type">
           <Row label="text">
             <input
@@ -474,79 +543,45 @@ export function App() {
         </Section>
 
         <Section title="Video">
-          <Row label="scale" value={`${Number(config.video?.scale ?? 1).toFixed(2)}×`}>
+          <EngineTabs value={engineTab} onChange={setEngineTab} />
+          <Row label="scale" value={`${Number(videoTune.scale ?? 1).toFixed(2)}×`}>
             <input
               type="range"
               min="0.2"
               max="4"
               step="0.05"
-              value={config.video?.scale ?? 1}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  video: { ...config.video, scale: Number(e.target.value) },
-                })
-              }
+              value={videoTune.scale ?? 1}
+              onChange={(e) => setVideoTune({ scale: Number(e.target.value) })}
             />
           </Row>
-          <Row label="z" value={Number(config.video?.z ?? 0).toFixed(2)}>
+          <Row label="z" value={Number(videoTune.z ?? 0).toFixed(2)}>
             <input
               type="range"
               min="0"
               max="2.5"
               step="0.05"
-              value={config.video?.z ?? 0}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  video: { ...config.video, z: Number(e.target.value) },
-                })
-              }
+              value={videoTune.z ?? 0}
+              onChange={(e) => setVideoTune({ z: Number(e.target.value) })}
             />
           </Row>
-          <Row label="round" value={Math.round(config.video?.radius ?? 0)}>
+          <Row label="round" value={Math.round(videoTune.radius ?? 0)}>
             <input
               type="range"
               min="0"
               max="160"
               step="1"
-              value={config.video?.radius ?? 0}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  video: { ...config.video, radius: Number(e.target.value) },
-                })
-              }
+              value={videoTune.radius ?? 0}
+              onChange={(e) => setVideoTune({ radius: Number(e.target.value) })}
             />
           </Row>
-          <Row label="parallax" value={Number(config.video?.parallax ?? 1).toFixed(2)}>
+          <Row label="parallax" value={Number(videoTune.parallax ?? 1).toFixed(2)}>
             <input
               type="range"
               min="0"
               max="2.5"
               step="0.05"
-              value={config.video?.parallax ?? 1}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  video: { ...config.video, parallax: Number(e.target.value) },
-                })
-              }
-            />
-          </Row>
-          <Row label="interlace" value={`${Number(config.video?.interlace ?? 1).toFixed(2)}×`}>
-            <input
-              type="range"
-              min="0.25"
-              max="8"
-              step="0.25"
-              value={config.video?.interlace ?? 1}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  video: { ...config.video, interlace: Number(e.target.value) },
-                })
-              }
+              value={videoTune.parallax ?? 1}
+              onChange={(e) => setVideoTune({ parallax: Number(e.target.value) })}
             />
           </Row>
         </Section>
@@ -761,19 +796,15 @@ export function App() {
             />
             {hasEffect(config, "letter", "box") && (
               <>
-                <Row label="front" value={Number(config.video?.front ?? 0).toFixed(3)}>
+                <EngineTabs value={engineTab} onChange={setEngineTab} />
+                <Row label="front" value={Number(videoTune.front ?? 0).toFixed(3)}>
                   <input
                     type="range"
                     min="0"
                     max="1"
                     step="0.005"
-                    value={config.video?.front ?? 0}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        video: { ...config.video, front: Number(e.target.value) },
-                      })
-                    }
+                    value={videoTune.front ?? 0}
+                    onChange={(e) => setVideoTune({ front: Number(e.target.value) })}
                   />
                 </Row>
                 <Row label="pad" value={Number(getEffect(config, "letter", "box")?.extraWidth ?? 0).toFixed(2)}>
@@ -952,7 +983,7 @@ export function App() {
                     const faces = cycleFonts.filter((font) => !String(font).startsWith("glyph:"));
                     setConfig(
                       patchEffect(config, "letter", "fontCycle", {
-                        fonts: on ? [...faces, "glyph:D"] : faces,
+                        fonts: on ? [...faces, "glyph:f"] : faces,
                       })
                     );
                   }}
@@ -992,6 +1023,8 @@ export function App() {
             </>
           )}
         </Section>
+          </>
+        )}
       </aside>
     </div>
     </div>

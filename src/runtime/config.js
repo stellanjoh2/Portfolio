@@ -1,4 +1,5 @@
 import videoUrl from "../assets/featureloop-virtualstudio.mp4?url";
+import { isSafari } from "./browser.js";
 
 export const DEFAULT_TEXT = "Welcome to my stupid homepage";
 
@@ -6,12 +7,25 @@ export const DEFAULT_BASE_FONT = '"PP Monument Wide"';
 
 export const DEFAULT_VIDEO = videoUrl;
 
+export const ENGINE_KEYS = ["chrome", "safari"];
+
+const DEFAULT_VIDEO_TUNING = {
+  scale: 1.45,
+  z: 1.4,
+  front: 0.165,
+  radius: 36,
+  parallax: 0.95,
+};
+
 export const CYCLE_FONTS = [
   '"Pixelify Sans", sans-serif',
   '"Coral Pixels", sans-serif',
   '"Manufacturing Consent", sans-serif',
   '"DotGothic16", sans-serif',
-  "glyph:D",
+  '"Tiltortion", sans-serif',
+  '"ERKI 30", sans-serif',
+  '"Beast", sans-serif',
+  "glyph:f",
 ];
 
 export function defaultConfig() {
@@ -56,12 +70,52 @@ export function defaultConfig() {
     },
     video: {
       src: DEFAULT_VIDEO,
-      scale: 1.45,
-      z: 1.4,
-      front: 0.165,
-      radius: 36,
-      parallax: 0.95,
-      interlace: 8,
+      chrome: { ...DEFAULT_VIDEO_TUNING },
+      safari: { ...DEFAULT_VIDEO_TUNING },
+    },
+  };
+}
+
+export function activeEngineKey() {
+  return isSafari() ? "safari" : "chrome";
+}
+
+export function normalizeVideo(video = {}) {
+  const d = defaultConfig().video;
+  if (video.chrome || video.safari) {
+    return {
+      src: video.src ?? d.src,
+      chrome: { ...d.chrome, ...(video.chrome || {}) },
+      safari: { ...d.safari, ...(video.safari || {}) },
+    };
+  }
+  const { src, scale, z, front, radius, parallax } = video;
+  const legacy = { scale, z, front, radius, parallax };
+  const hasLegacy = Object.values(legacy).some((v) => v !== undefined);
+  return {
+    src: src ?? d.src,
+    chrome: { ...d.chrome, ...(hasLegacy ? legacy : {}) },
+    safari: { ...d.safari, ...(hasLegacy ? legacy : {}) },
+  };
+}
+
+export function resolveConfig(config) {
+  const video = normalizeVideo(config.video);
+  const tuning = video[activeEngineKey()] ?? video.chrome;
+  return {
+    ...config,
+    video: { src: video.src, ...tuning },
+  };
+}
+
+export function patchEngineVideo(config, engine, patch) {
+  const video = normalizeVideo(config.video);
+  const key = ENGINE_KEYS.includes(engine) ? engine : "chrome";
+  return {
+    ...config,
+    video: {
+      ...video,
+      [key]: { ...video[key], ...patch },
     },
   };
 }
@@ -82,7 +136,7 @@ export function normalizeConfig(input = {}) {
         ? input.letter.effects
         : d.letter.effects,
     },
-    video: { ...d.video, ...(input.video || {}) },
+    video: normalizeVideo(input.video || d.video),
   };
 }
 

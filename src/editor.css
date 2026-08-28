@@ -169,6 +169,76 @@ body {
   text-transform: uppercase;
 }
 
+.panel-title {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.panel-title:hover {
+  color: var(--accent);
+}
+
+.credits {
+  padding: 0 2px 24px;
+}
+
+.credits-lead {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+}
+
+.credit {
+  margin: 0 0 14px;
+  padding: 10px;
+  background: #0c0d10;
+  border: 1px solid var(--line);
+}
+
+.credit-name {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.credit-by,
+.credit-desc,
+.credit-note,
+.credit-license {
+  margin: 0 0 6px;
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+
+.credit-by {
+  color: var(--ink);
+}
+
+.credit-desc,
+.credit-note {
+  color: var(--muted);
+}
+
+.credit-license {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .panel-head-actions {
   display: flex;
   gap: 6px;
@@ -337,6 +407,33 @@ body {
   gap: 8px;
   margin-bottom: 8px;
   font-size: 11px;
+}
+
+.engine-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0 0 10px;
+  border: 1px solid var(--line);
+}
+
+.engine-tabs button {
+  padding: 6px 8px;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.engine-tabs button + button {
+  border-left: 1px solid var(--line);
+}
+
+.engine-tabs button.is-on {
+  background: #1a1d24;
+  color: var(--accent);
 }
 
 .sound-switch {

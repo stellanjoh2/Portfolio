@@ -1,6 +1,7 @@
 import gsap from "gsap";
+import { effectTypes, normalizeVideo, resolveConfig } from "./config.js";
+import { idleSafariVideo, moveSafariVideo } from "./safariVideo.js";
 import { createEffect } from "./registry.js";
-import { effectTypes } from "./config.js";
 import { applyBase, splitRoot } from "./split.js";
 
 function fire(instances, hook, ctx) {
@@ -30,18 +31,19 @@ export function createEngine(root, initialConfig) {
     gsap,
     reduceMotion,
     getHover: () => hover,
-    getConfig: () => config,
+    getConfig: () => resolveConfig(config),
     isPaused: () => paused,
   };
 
   function makeCtx(extra = {}) {
+    const live = resolveConfig(config);
     return {
       root,
       wordEl: hover.wordEl,
       charEl: hover.charEl,
       pointer: hover.pointer,
-      config,
-      hover: config.hover,
+      config: live,
+      hover: live.hover,
       el: extra.el,
       target: extra.target,
       ...extra,
@@ -106,6 +108,7 @@ export function createEngine(root, initialConfig) {
     if (paused) return;
     hover.pointer = { x: e.clientX, y: e.clientY };
     setHovered(charFromPoint(e.clientX, e.clientY));
+    moveSafariVideo(root, resolveConfig(config).video, hover.pointer);
     const ctx = makeCtx();
     fire(effects.word, "move", ctx);
     fire(effects.letter, "move", ctx);
@@ -160,13 +163,14 @@ export function createEngine(root, initialConfig) {
     }
     hover.charEl = null;
     hover.wordEl = null;
+    idleSafariVideo(root, resolveConfig(config).video);
     fire(allEffects(effects), "leaveField", makeCtx());
   }
 
   let cancelled = false;
 
   async function setup() {
-    splitBag = await splitRoot(root, config, () => cancelled);
+    splitBag = await splitRoot(root, resolveConfig(config), () => cancelled);
     if (cancelled || !splitBag) return;
     buildEffects();
     if (paused) {
@@ -212,7 +216,7 @@ export function createEngine(root, initialConfig) {
     update(next) {
       const prev = config;
       config = next;
-      applyBase(root, config);
+      applyBase(root, resolveConfig(config));
 
       const splitChanged =
         prev.text !== next.text ||
@@ -222,7 +226,8 @@ export function createEngine(root, initialConfig) {
         prev.base.letterSpacing !== next.base.letterSpacing ||
         prev.base.lineHeight !== next.base.lineHeight ||
         prev.base.width !== next.base.width ||
-        prev.base.align !== next.base.align;
+        prev.base.align !== next.base.align ||
+        normalizeVideo(prev.video).src !== normalizeVideo(next.video).src;
 
       if (splitChanged) {
         teardownSplit();

@@ -13,9 +13,12 @@ export {
   hasEffect,
   normalizeConfig,
   patchEffect,
+  patchEngineVideo,
+  resolveConfig,
   setEffect,
   setGlyphMode,
   CYCLE_FONTS,
+  ENGINE_KEYS,
 } from "./config.js";
 export { register };
 

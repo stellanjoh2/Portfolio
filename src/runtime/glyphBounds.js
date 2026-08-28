@@ -45,11 +45,45 @@ function rasterInk(family, weight, text) {
     }
   }
 
+  const baselineY = pad + SAMPLE;
   const result = found
-    ? { width: maxX - minX + 1, height: maxY - minY + 1 }
-    : { width: 0, height: 0 };
+    ? {
+        width: maxX - minX + 1,
+        height: maxY - minY + 1,
+        inkBottom: maxY - baselineY,
+        inkTop: minY - baselineY,
+        centerX: (minX + maxX) / 2 - pad,
+      }
+    : { width: 0, height: 0, inkBottom: 0, inkTop: 0, centerX: 0 };
   inkCache.set(key, result);
   return result;
+}
+
+function measureBaselinePx(charEl, glyphEl) {
+  const charBox = charEl.getBoundingClientRect();
+  const cs = getComputedStyle(glyphEl);
+  const em = parseFloat(cs.fontSize) || 16;
+  const ctx = canvasCtx();
+  ctx.font = `${cs.fontWeight} ${em}px ${cs.fontFamily}`;
+  const m = ctx.measureText(glyphEl.textContent || charEl.dataset.tfxChar || "H");
+  const ascent = m.fontBoundingBoxAscent ?? m.actualBoundingBoxAscent ?? em * 0.8;
+  const glyphBox = glyphEl.getBoundingClientRect();
+  return glyphBox.top - charBox.top + ascent;
+}
+
+function inkBottomNorm(charEl, glyphEl) {
+  const cs = getComputedStyle(glyphEl);
+  const text = glyphEl.textContent || charEl.dataset.tfxChar || "";
+  if (!text.trim()) return 1;
+
+  const em = parseFloat(cs.fontSize) || 16;
+  const raster = rasterInk(cs.fontFamily, cs.fontWeight, text);
+  const charH = charEl.offsetHeight;
+  if (!charH || !raster.height) return rangeCenter(charEl, glyphEl).bottom;
+
+  const baselinePx = measureBaselinePx(charEl, glyphEl);
+  const scale = em / SAMPLE;
+  return (baselinePx + raster.inkBottom * scale) / charH;
 }
 
 function inkBox(charEl, glyphEl) {
@@ -129,13 +163,13 @@ export function liftInkIntoBox(charEl, glyphEl) {
   return (box.bottom - ink.bottom) / parentScaleY;
 }
 
-export function inkOffsetToOrigin(charEl, glyphEl) {
+export function inkOffsetToOrigin(charEl, glyphEl, { snapBottom = false } = {}) {
   const ox = parseFloat(charEl.style.getPropertyValue("--tfx-ox")) / 100 || 0.5;
-  const floor = Number(charEl.dataset.tfxInkBottom);
   const ink = rangeCenter(charEl, glyphEl);
-  const yTarget = Number.isFinite(floor) ? floor : 1;
+  const bottom = inkBottomNorm(charEl, glyphEl);
+  const yTarget = snapBottom ? 1 : Number(charEl.dataset.tfxInkBottom) || 1;
   return {
     x: (ox - ink.x) * charEl.offsetWidth,
-    y: (yTarget - ink.bottom) * charEl.offsetHeight,
+    y: (yTarget - bottom) * charEl.offsetHeight,
   };
 }

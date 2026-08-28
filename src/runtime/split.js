@@ -1,4 +1,5 @@
 import { injectFonts } from "./injectFonts.js";
+import { applyVideoStyles, idleSafariVideo } from "./safariVideo.js";
 import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { pinGlyphOrigin } from "./glyphBounds.js";
@@ -39,7 +40,8 @@ export function applyBase(root, config) {
   root.style.color = config.base.color;
   root.style.setProperty("--tfx-color-neutral", config.base.color);
   root.style.setProperty("--tfx-oy", `${config.hover.originY ?? 50}%`);
-  root.style.setProperty("--tfx-video-scale", String(config.video?.scale ?? 1));
+  applyVideoStyles(root, config.video);
+  idleSafariVideo(root, config.video);
   root.querySelectorAll(".tfx-char").forEach((char) => {
     char.classList.toggle("tfx-char--space", !String(char.dataset.tfxChar || "").trim());
   });

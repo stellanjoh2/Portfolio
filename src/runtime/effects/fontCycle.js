@@ -1,5 +1,5 @@
 import { SKULLZ_FAMILY } from "../injectFonts.js";
-import { fitGlyphToInk, inkOffsetToOrigin, liftInkIntoBox, restoreCharBox } from "../glyphBounds.js";
+import { fitGlyphToInk, inkOffsetToOrigin, restoreCharBox } from "../glyphBounds.js";
 
 function glyphOf(spec) {
   if (typeof spec !== "string" || !spec.startsWith("glyph:")) return null;
@@ -28,19 +28,12 @@ function alignInk(el, lift = false) {
   nodes.forEach((node) => {
     node.style.transform = "";
   });
-  const { x, y } = inkOffsetToOrigin(el, glyph);
-  let ty = y;
-  const paint = () => {
-    const t = `translate(${x}px, ${ty}px)`;
-    nodes.forEach((node) => {
-      node.style.transform = t;
-    });
-  };
-  paint();
-  if (lift) {
-    ty += liftInkIntoBox(el, glyph) + 20;
-    paint();
-  }
+  const { x, y } = inkOffsetToOrigin(el, glyph, { snapBottom: true });
+  let ty = lift ? y - el.offsetHeight * 0.25 : y;
+  const t = `translate(${x}px, ${ty}px)`;
+  nodes.forEach((node) => {
+    node.style.transform = t;
+  });
 }
 
 function paintFace(el, family, weight) {

@@ -1,3 +1,5 @@
+import { isSafari } from "../browser.js";
+
 const VS = `#version 300 es
 in vec2 aPos;
 out vec2 vUv;
@@ -20,8 +22,6 @@ uniform float uRadius;
 uniform float uVideoZ;
 uniform float uHudZ;
 uniform float uParallax;
-uniform vec2 uFb;
-uniform float uInterlace;
 
 vec4 sampleLayer(sampler2D tex, vec2 uv) {
   if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec4(0.0);
@@ -47,7 +47,6 @@ void main() {
   vec2 farUv = look + (vUv - look) * (1.0 - bulge);
   vec2 videoUv = world + (farUv - world - travel * (1.0 - 1.0 / far) * uParallax) * far;
   vec4 video = sampleLayer(uVideo, videoUv);
-  video *= mod(floor(videoUv.y * uFb.y / max(uInterlace, 0.001)), 2.0);
 
   float hz = max(uHudZ, 0.0);
   float near = 1.0 + hz;
@@ -132,8 +131,6 @@ function makeGL(canvas) {
   const uVideoZ = gl.getUniformLocation(prog, "uVideoZ");
   const uHudZ = gl.getUniformLocation(prog, "uHudZ");
   const uParallax = gl.getUniformLocation(prog, "uParallax");
-  const uFb = gl.getUniformLocation(prog, "uFb");
-  const uInterlace = gl.getUniformLocation(prog, "uInterlace");
 
   return {
     resize(w, h) {
@@ -170,8 +167,6 @@ function makeGL(canvas) {
       gl.uniform1f(uVideoZ, Math.max(0, Number(video.z) || 0));
       gl.uniform1f(uHudZ, Math.max(0, Number(video.front) || 0));
       gl.uniform1f(uParallax, video.parallax == null ? 1 : Math.max(0, Number(video.parallax)));
-      gl.uniform2f(uFb, canvas.width, canvas.height);
-      gl.uniform1f(uInterlace, Math.max(0.001, Number(video.interlace) || 1));
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },
     destroy() {
@@ -211,6 +206,17 @@ function localRect(el, box) {
 }
 
 export function fisheye(opts, api) {
+  if (isSafari()) {
+    return {
+      update(next) {
+        Object.assign(opts, next);
+      },
+      pause() {},
+      resume() {},
+      destroy() {},
+    };
+  }
+
   const canvas = document.createElement("canvas");
   canvas.className = "tfx-fisheye";
   const off = document.createElement("canvas");
