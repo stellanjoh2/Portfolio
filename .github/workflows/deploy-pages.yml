@@ -22,10 +22,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:pages
-      - name: Deploy built site to gh-pages branch
+      - name: Publish build to docs/ on main
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          publish_branch: gh-pages
-          force_orphan: true
+          publish_branch: main
+          destination_dir: docs
+          keep_files: true
+          commit_message: "Deploy GitHub Pages build to docs/"
