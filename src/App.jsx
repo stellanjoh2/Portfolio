@@ -141,7 +141,7 @@ export function App() {
   const skipUpdate = useRef(true);
   const [config, setConfig] = useState(() => defaultConfig());
   const [copied, setCopied] = useState(false);
-  const [uiHidden, setUiHidden] = useState(false);
+  const [uiHidden, setUiHidden] = useState(true);
   const [systemFonts, setSystemFonts] = useState([]);
   const [fontOpen, setFontOpen] = useState(false);
   const [fontQuery, setFontQuery] = useState("");
