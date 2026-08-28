@@ -72,7 +72,7 @@ export function defaultConfig() {
     video: {
       src: DEFAULT_VIDEO,
       chrome: { ...DEFAULT_VIDEO_TUNING },
-      safari: { scale: 0.95 },
+      safari: { scale: 0.95, parallax: 2 },
     },
   };
 }
@@ -95,10 +95,12 @@ export function normalizeVideo(video = {}) {
     video.safari?.scale ??
     (hasLegacy ? legacy.scale : undefined) ??
     d.safari.scale;
+  const safariParallax =
+    video.safari?.parallax ?? d.safari.parallax ?? chrome.parallax;
   return {
     src: video.src ?? src ?? d.src,
     chrome,
-    safari: { scale: safariScale },
+    safari: { scale: safariScale, parallax: safariParallax },
   };
 }
 
@@ -106,7 +108,11 @@ export function resolveConfig(config) {
   const video = normalizeVideo(config.video);
   const tuning =
     activeEngineKey() === "safari"
-      ? { ...video.chrome, scale: video.safari.scale }
+      ? {
+          ...video.chrome,
+          scale: video.safari.scale,
+          parallax: video.safari.parallax ?? video.chrome.parallax,
+        }
       : video.chrome;
   return {
     ...config,
@@ -119,6 +125,7 @@ export function patchEngineVideo(config, engine, patch) {
   if (engine === "safari") {
     const next = { ...config, video: { ...video, safari: { ...video.safari } } };
     if (patch.scale !== undefined) next.video.safari.scale = patch.scale;
+    if (patch.parallax !== undefined) next.video.safari.parallax = patch.parallax;
     return next;
   }
   return {

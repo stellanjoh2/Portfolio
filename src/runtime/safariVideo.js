@@ -47,7 +47,7 @@ export function moveSafariVideo(root, video, pointer) {
   if (!box.width || !box.height) return;
   const nx = Math.max(-0.5, Math.min(0.5, (pointer.x - box.left) / box.width - 0.5));
   const ny = Math.max(-0.5, Math.min(0.5, (pointer.y - box.top) / box.height - 0.5));
-  const amount = parallax * 48;
+  const amount = parallax * 96;
   setTransform(el, video, nx * amount, ny * amount);
 }
 

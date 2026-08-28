@@ -81,11 +81,13 @@ export function glyphAnchor(glyphEl) {
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
   const m = ctx.measureText(text);
-  const fontAscent = m.fontBoundingBoxAscent ?? em * 0.8;
-  const fontDescent = m.fontBoundingBoxDescent ?? em * 0.2;
+  const font = ctx.measureText("H");
+  const fontAscent = font.fontBoundingBoxAscent ?? m.fontBoundingBoxAscent ?? em * 0.8;
+  const fontDescent = font.fontBoundingBoxDescent ?? m.fontBoundingBoxDescent ?? em * 0.2;
+  const lineH = glyphEl.closest(".tfx-char")?.offsetHeight || oh;
   return {
     x: ow / 2,
-    y: (oh - (fontAscent + fontDescent)) / 2 + fontAscent,
+    y: (lineH - (fontAscent + fontDescent)) / 2 + fontAscent,
     em,
     advance: m.width,
     fontAscent,
@@ -181,7 +183,9 @@ export function placeLetters(root, originY) {
   });
 
   let y = 0;
-  const sample = chars.find((char) => char.querySelector(".tfx-glyph"));
+  const sample =
+    chars.find((char) => /\p{L}/u.test(char.dataset.tfxChar || "")) ||
+    chars.find((char) => char.querySelector(".tfx-glyph"));
   if (sample) {
     const glyph = sample.querySelector(".tfx-glyph");
     glyph.style.transform = "";

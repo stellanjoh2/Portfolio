@@ -1,5 +1,5 @@
 import { isSafari } from "../browser.js";
-import { glyphAnchor, inkClientRect } from "../glyphBounds.js";
+import { glyphAnchor } from "../glyphBounds.js";
 
 const VS = `#version 300 es
 in vec2 aPos;
@@ -15,12 +15,14 @@ in vec2 vUv;
 out vec4 fragColor;
 uniform sampler2D uTex;
 uniform sampler2D uVideo;
+uniform sampler2D uLetter;
 uniform sampler2D uHud;
 uniform vec2 uCenter;
 uniform vec2 uResolution;
 uniform float uStrength;
 uniform float uRadius;
 uniform float uVideoZ;
+uniform float uLetterZ;
 uniform float uHudZ;
 uniform float uParallax;
 uniform float uChroma;
@@ -50,6 +52,12 @@ vec4 scene(vec2 uv) {
   vec2 videoUv = world + (farUv - world - travel * (1.0 - 1.0 / far) * uParallax) * far;
   vec4 video = sampleLayer(uVideo, videoUv);
 
+  float lz = max(uLetterZ, 0.0);
+  float letterNear = 1.0 + lz;
+  vec2 letterWarp = look + (uv - look) * (1.0 - min(bulge * letterNear, 0.92));
+  vec2 letterUv = world + (letterWarp - world + travel * (1.0 - 1.0 / letterNear) * uParallax) / letterNear;
+  vec4 letter = sampleLayer(uLetter, letterUv);
+
   float hz = max(uHudZ, 0.0);
   float near = 1.0 + hz;
   vec2 nearUv = look + (uv - look) * (1.0 - min(bulge * near, 0.92));
@@ -57,7 +65,8 @@ vec4 scene(vec2 uv) {
   vec4 hud = sampleLayer(uHud, hudUv);
 
   vec4 mid = text + video * (1.0 - text.a);
-  return hud + mid * (1.0 - hud.a);
+  vec4 pop = letter + mid * (1.0 - letter.a);
+  return hud + pop * (1.0 - hud.a);
 }
 
 void main() {
@@ -131,12 +140,14 @@ function makeGL(canvas) {
 
   const texText = makeTex();
   const texVideo = makeTex();
+  const texLetter = makeTex();
   const texHud = makeTex();
 
   gl.useProgram(prog);
   gl.uniform1i(gl.getUniformLocation(prog, "uTex"), 0);
   gl.uniform1i(gl.getUniformLocation(prog, "uVideo"), 1);
-  gl.uniform1i(gl.getUniformLocation(prog, "uHud"), 2);
+  gl.uniform1i(gl.getUniformLocation(prog, "uLetter"), 2);
+  gl.uniform1i(gl.getUniformLocation(prog, "uHud"), 3);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
@@ -147,6 +158,7 @@ function makeGL(canvas) {
   const uStrength = gl.getUniformLocation(prog, "uStrength");
   const uRadius = gl.getUniformLocation(prog, "uRadius");
   const uVideoZ = gl.getUniformLocation(prog, "uVideoZ");
+  const uLetterZ = gl.getUniformLocation(prog, "uLetterZ");
   const uHudZ = gl.getUniformLocation(prog, "uHudZ");
   const uParallax = gl.getUniformLocation(prog, "uParallax");
   const uChroma = gl.getUniformLocation(prog, "uChroma");
@@ -158,7 +170,7 @@ function makeGL(canvas) {
       canvas.height = h;
       gl.viewport(0, 0, w, h);
     },
-    upload(textSource, videoSource, hudSource) {
+    upload(textSource, videoSource, letterSource, hudSource) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texText);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textSource);
@@ -166,6 +178,9 @@ function makeGL(canvas) {
       gl.bindTexture(gl.TEXTURE_2D, texVideo);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoSource);
       gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, texLetter);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, letterSource);
+      gl.activeTexture(gl.TEXTURE3);
       gl.bindTexture(gl.TEXTURE_2D, texHud);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, hudSource);
     },
@@ -178,13 +193,17 @@ function makeGL(canvas) {
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, texVideo);
       gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, texLetter);
+      gl.activeTexture(gl.TEXTURE3);
       gl.bindTexture(gl.TEXTURE_2D, texHud);
       gl.uniform2f(uCenter, state.cx, state.cy);
       gl.uniform2f(uResolution, cssW, cssH);
       gl.uniform1f(uStrength, state.strength);
       gl.uniform1f(uRadius, radius);
       gl.uniform1f(uVideoZ, Math.max(0, Number(video.z) || 0));
-      gl.uniform1f(uHudZ, Math.max(0, Number(video.front) || 0));
+      const front = Math.max(0, Number(video.front) || 0);
+      gl.uniform1f(uLetterZ, front * 0.5);
+      gl.uniform1f(uHudZ, front);
       gl.uniform1f(uParallax, video.parallax == null ? 1 : Math.max(0, Number(video.parallax)));
       gl.uniform1f(uChroma, Math.max(0, Number(chroma) || 0));
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -192,6 +211,7 @@ function makeGL(canvas) {
     destroy() {
       gl.deleteTexture(texText);
       gl.deleteTexture(texVideo);
+      gl.deleteTexture(texLetter);
       gl.deleteTexture(texHud);
       gl.deleteBuffer(buf);
       gl.deleteProgram(prog);
@@ -281,9 +301,11 @@ export function fisheye(opts, api) {
   canvas.className = "tfx-fisheye";
   const off = document.createElement("canvas");
   const offVideo = document.createElement("canvas");
+  const offLetter = document.createElement("canvas");
   const offHud = document.createElement("canvas");
   const ctx = off.getContext("2d");
   const vctx = offVideo.getContext("2d");
+  const lctx = offLetter.getContext("2d");
   const hctx = offHud.getContext("2d");
   const probe = document.createElement("canvas");
   probe.width = 8;
@@ -365,6 +387,8 @@ export function fisheye(opts, api) {
     if (offVideo.height !== bh) offVideo.height = bh;
     if (offHud.width !== bw) offHud.width = bw;
     if (offHud.height !== bh) offHud.height = bh;
+    if (offLetter.width !== bw) offLetter.width = bw;
+    if (offLetter.height !== bh) offLetter.height = bh;
   }
 
   function hasPicture(video) {
@@ -413,17 +437,13 @@ export function fisheye(opts, api) {
     vctx.drawImage(video, dx, dy, dw, dh);
   }
 
-  function stamp() {
-    const dpr = off.width / cssW;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, cssW, cssH);
+  function collectDraws() {
     const hover = api.getHover();
     const config = api.getConfig();
     const letterGlow = (config.letter?.effects || []).find((e) => e.type === "glow");
     const wordGlow = (config.word?.effects || []).find((e) => e.type === "glow");
-    const glyphs = api.root.querySelectorAll(".tfx-glyph");
     const draws = [];
-    for (const glyph of glyphs) {
+    for (const glyph of api.root.querySelectorAll(".tfx-glyph")) {
       const ch = glyph.textContent || "";
       if (!ch.trim()) continue;
       const char = glyph.closest(".tfx-char");
@@ -435,29 +455,55 @@ export function fisheye(opts, api) {
         placed,
         letterHot: char === hover.charEl,
         wordHot: hover.wordEl && hover.wordEl.contains(char),
+        letterGlow,
+        wordGlow,
       });
     }
-    for (const draw of draws) {
-      const p = localFromClient(canvas, draw.placed.x, draw.placed.y);
-      const size = (parseFloat(draw.cs.fontSize) || 16) * draw.placed.scale;
-      ctx.font = `${draw.cs.fontStyle} ${draw.cs.fontWeight} ${size}px ${draw.cs.fontFamily}`;
-      ctx.fillStyle = draw.cs.color;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
-      if (draw.letterHot && letterGlow) {
-        ctx.shadowColor = letterGlow.color ?? "#ffffff";
-        ctx.shadowBlur = letterGlow.size ?? 4;
-      } else if (draw.wordHot && wordGlow) {
-        ctx.shadowColor = wordGlow.color ?? "#ffffff";
-        ctx.shadowBlur = wordGlow.size ?? 12;
-      }
-      ctx.fillText(draw.ch, p.x, p.y);
+    return draws;
+  }
+
+  function paintGlyph(c, draw) {
+    const p = localFromClient(canvas, draw.placed.x, draw.placed.y);
+    const size = (parseFloat(draw.cs.fontSize) || 16) * draw.placed.scale;
+    c.font = `${draw.cs.fontStyle} ${draw.cs.fontWeight} ${size}px ${draw.cs.fontFamily}`;
+    c.fillStyle = draw.cs.color;
+    c.textAlign = "center";
+    c.textBaseline = "alphabetic";
+    c.shadowColor = "transparent";
+    c.shadowBlur = 0;
+    if (draw.letterHot && draw.letterGlow) {
+      c.shadowColor = draw.letterGlow.color ?? "#ffffff";
+      c.shadowBlur = draw.letterGlow.size ?? 4;
+    } else if (draw.wordHot && draw.wordGlow) {
+      c.shadowColor = draw.wordGlow.color ?? "#ffffff";
+      c.shadowBlur = draw.wordGlow.size ?? 12;
     }
-    ctx.shadowBlur = 0;
+    c.fillText(draw.ch, p.x, p.y);
+    c.shadowBlur = 0;
+  }
+
+  function stamp() {
+    const dpr = off.width / cssW;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    const draws = collectDraws();
+    for (const draw of draws) {
+      if (draw.letterHot) continue;
+      paintGlyph(ctx, draw);
+    }
     stampGrid();
     stampLetterBox();
+    stampLetter(draws);
+  }
+
+  function stampLetter(draws) {
+    const dpr = offLetter.width / cssW;
+    lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    lctx.clearRect(0, 0, cssW, cssH);
+    for (const draw of draws) {
+      if (!draw.letterHot) continue;
+      paintGlyph(lctx, draw);
+    }
   }
 
   function hudOpacity(node) {
@@ -498,7 +544,7 @@ export function fisheye(opts, api) {
       if (char.classList.contains("tfx-char--space") || char.classList.contains("tfx-char--hot")) {
         continue;
       }
-      const box = inkClientRect(char);
+      const box = char.getBoundingClientRect();
       if (!box.width && !box.height) continue;
       const r = localRect(canvas, box);
       ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h);
@@ -576,7 +622,7 @@ export function fisheye(opts, api) {
     stamp();
     stampVideo();
     stampHud();
-    gpu.upload(off, offVideo, offHud);
+    gpu.upload(off, offVideo, offLetter, offHud);
     const lookX = state.cx * cssW;
     const lookY = state.cy * cssH;
     const cover = Math.max(
@@ -661,7 +707,7 @@ export function fisheye(opts, api) {
     aim(e.clientX, e.clientY);
   }
 
-  if (!gpu || !ctx || !vctx || !hctx || !probeCtx) {
+  if (!gpu || !ctx || !vctx || !lctx || !hctx || !probeCtx) {
     return {
       update(next) {
         Object.assign(opts, next);

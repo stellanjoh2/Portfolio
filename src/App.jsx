@@ -234,8 +234,11 @@ export function App() {
   const cycleFonts = cycle?.fonts || CYCLE_FONTS;
   const mode = glyphMode(config);
   const chromeTune = config.video?.chrome ?? {};
+  const zExtension = (chromeTune.front ?? 0) * 10;
   const safariScale = config.video?.safari?.scale ?? chromeTune.scale ?? 1;
+  const safariParallax = config.video?.safari?.parallax ?? chromeTune.parallax ?? 0.95;
   const scaleValue = engineTab === "safari" ? safariScale : chromeTune.scale ?? 1;
+  const parallaxValue = engineTab === "safari" ? safariParallax : chromeTune.parallax ?? 0.95;
   const fontNeedle = fontQuery.trim().toLowerCase();
   const fontMatches = fontNeedle
     ? systemFonts.filter((family) => family.toLowerCase().includes(fontNeedle))
@@ -245,8 +248,8 @@ export function App() {
     setConfig(patchEngineVideo(config, "chrome", patch));
   }
 
-  function setSafariScale(scale) {
-    setConfig(patchEngineVideo(config, "safari", { scale }));
+  function setSafariVideo(patch) {
+    setConfig(patchEngineVideo(config, "safari", patch));
   }
 
   function copyConfig() {
@@ -592,7 +595,7 @@ export function App() {
               value={scaleValue}
               onChange={(e) =>
                 engineTab === "safari"
-                  ? setSafariScale(Number(e.target.value))
+                  ? setSafariVideo({ scale: Number(e.target.value) })
                   : setChromeVideo({ scale: Number(e.target.value) })
               }
             />
@@ -617,14 +620,18 @@ export function App() {
               onChange={(e) => setChromeVideo({ radius: Number(e.target.value) })}
             />
           </Row>
-          <Row label="parallax" value={Number(chromeTune.parallax ?? 1).toFixed(2)}>
+          <Row label="parallax" value={Number(parallaxValue).toFixed(2)}>
             <input
               type="range"
               min="0"
-              max="2.5"
+              max="4"
               step="0.05"
-              value={chromeTune.parallax ?? 1}
-              onChange={(e) => setChromeVideo({ parallax: Number(e.target.value) })}
+              value={parallaxValue}
+              onChange={(e) =>
+                engineTab === "safari"
+                  ? setSafariVideo({ parallax: Number(e.target.value) })
+                  : setChromeVideo({ parallax: Number(e.target.value) })
+              }
             />
           </Row>
         </Section>
@@ -769,6 +776,21 @@ export function App() {
               }
             />
           </Row>
+          {!isSafari() && (
+          <Row
+            label="z extension"
+            value={`${Number(zExtension).toFixed(1)} / ${(zExtension * 0.5).toFixed(1)}`}
+          >
+            <input
+              type="range"
+              min="0"
+              max="10"
+              step="0.1"
+              value={zExtension}
+              onChange={(e) => setChromeVideo({ front: Number(e.target.value) / 10 })}
+            />
+          </Row>
+          )}
           <Fx>
             <Toggle
               label="color"
@@ -837,23 +859,11 @@ export function App() {
               }
             />
             {hasEffect(config, "letter", "box") && (
-              <>
-                <Row label="front" value={Number(chromeTune.front ?? 0).toFixed(3)}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.005"
-                    value={chromeTune.front ?? 0}
-                    onChange={(e) => setChromeVideo({ front: Number(e.target.value) })}
-                  />
-                </Row>
-                <Toggle
-                  label="details"
-                  checked={Boolean(getEffect(config, "letter", "box")?.details)}
-                  onChange={(on) => setConfig(patchEffect(config, "letter", "box", { details: on }))}
-                />
-              </>
+              <Toggle
+                label="details"
+                checked={Boolean(getEffect(config, "letter", "box")?.details)}
+                onChange={(on) => setConfig(patchEffect(config, "letter", "box", { details: on }))}
+              />
             )}
           </Fx>
           <Fx>

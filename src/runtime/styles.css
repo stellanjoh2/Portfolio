@@ -34,6 +34,7 @@
 
 .tfx-char {
   text-align: center;
+  height: calc(1em * var(--tfx-leading, 1.05));
   transform-origin: var(--tfx-ox, 50%) var(--tfx-oy, 50%);
   margin-bottom: calc(1em * (var(--tfx-leading, 1.05) - 1));
 }
@@ -56,6 +57,7 @@
   position: relative;
   z-index: 1;
   display: block;
+  height: 100%;
 }
 
 .tfx-glow {
