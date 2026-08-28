@@ -71,7 +71,7 @@ export function defaultConfig() {
     video: {
       src: DEFAULT_VIDEO,
       chrome: { ...DEFAULT_VIDEO_TUNING },
-      safari: { ...DEFAULT_VIDEO_TUNING },
+      safari: { scale: DEFAULT_VIDEO_TUNING.scale },
     },
   };
 }
@@ -82,26 +82,32 @@ export function activeEngineKey() {
 
 export function normalizeVideo(video = {}) {
   const d = defaultConfig().video;
-  if (video.chrome || video.safari) {
-    return {
-      src: video.src ?? d.src,
-      chrome: { ...d.chrome, ...(video.chrome || {}) },
-      safari: { ...d.safari, ...(video.safari || {}) },
-    };
-  }
   const { src, scale, z, front, radius, parallax } = video;
   const legacy = { scale, z, front, radius, parallax };
   const hasLegacy = Object.values(legacy).some((v) => v !== undefined);
+  const chrome = {
+    ...d.chrome,
+    ...(video.chrome || {}),
+    ...(hasLegacy ? legacy : {}),
+  };
+  const safariScale =
+    video.safari?.scale ??
+    (hasLegacy ? legacy.scale : undefined) ??
+    chrome.scale ??
+    d.safari.scale;
   return {
-    src: src ?? d.src,
-    chrome: { ...d.chrome, ...(hasLegacy ? legacy : {}) },
-    safari: { ...d.safari, ...(hasLegacy ? legacy : {}) },
+    src: video.src ?? src ?? d.src,
+    chrome,
+    safari: { scale: safariScale },
   };
 }
 
 export function resolveConfig(config) {
   const video = normalizeVideo(config.video);
-  const tuning = video[activeEngineKey()] ?? video.chrome;
+  const tuning =
+    activeEngineKey() === "safari"
+      ? { ...video.chrome, scale: video.safari.scale }
+      : video.chrome;
   return {
     ...config,
     video: { src: video.src, ...tuning },
@@ -110,12 +116,16 @@ export function resolveConfig(config) {
 
 export function patchEngineVideo(config, engine, patch) {
   const video = normalizeVideo(config.video);
-  const key = ENGINE_KEYS.includes(engine) ? engine : "chrome";
+  if (engine === "safari") {
+    const next = { ...config, video: { ...video, safari: { ...video.safari } } };
+    if (patch.scale !== undefined) next.video.safari.scale = patch.scale;
+    return next;
+  }
   return {
     ...config,
     video: {
       ...video,
-      [key]: { ...video[key], ...patch },
+      chrome: { ...video.chrome, ...patch },
     },
   };
 }

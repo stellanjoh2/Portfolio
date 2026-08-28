@@ -206,14 +206,20 @@ export function App() {
   const cycle = getEffect(config, "letter", "fontCycle");
   const cycleFonts = cycle?.fonts || CYCLE_FONTS;
   const mode = glyphMode(config);
-  const videoTune = config.video?.[engineTab] ?? config.video?.chrome ?? {};
+  const chromeTune = config.video?.chrome ?? {};
+  const safariScale = config.video?.safari?.scale ?? chromeTune.scale ?? 1;
+  const scaleValue = engineTab === "safari" ? safariScale : chromeTune.scale ?? 1;
   const fontNeedle = fontQuery.trim().toLowerCase();
   const fontMatches = fontNeedle
     ? systemFonts.filter((family) => family.toLowerCase().includes(fontNeedle))
     : systemFonts;
 
-  function setVideoTune(patch) {
-    setConfig(patchEngineVideo(config, engineTab, patch));
+  function setChromeVideo(patch) {
+    setConfig(patchEngineVideo(config, "chrome", patch));
+  }
+
+  function setSafariScale(scale) {
+    setConfig(patchEngineVideo(config, "safari", { scale }));
   }
 
   function copyConfig() {
@@ -544,44 +550,48 @@ export function App() {
 
         <Section title="Video">
           <EngineTabs value={engineTab} onChange={setEngineTab} />
-          <Row label="scale" value={`${Number(videoTune.scale ?? 1).toFixed(2)}×`}>
+          <Row label="scale" value={`${Number(scaleValue).toFixed(2)}×`}>
             <input
               type="range"
               min="0.2"
               max="4"
               step="0.05"
-              value={videoTune.scale ?? 1}
-              onChange={(e) => setVideoTune({ scale: Number(e.target.value) })}
+              value={scaleValue}
+              onChange={(e) =>
+                engineTab === "safari"
+                  ? setSafariScale(Number(e.target.value))
+                  : setChromeVideo({ scale: Number(e.target.value) })
+              }
             />
           </Row>
-          <Row label="z" value={Number(videoTune.z ?? 0).toFixed(2)}>
+          <Row label="z" value={Number(chromeTune.z ?? 0).toFixed(2)}>
             <input
               type="range"
               min="0"
               max="2.5"
               step="0.05"
-              value={videoTune.z ?? 0}
-              onChange={(e) => setVideoTune({ z: Number(e.target.value) })}
+              value={chromeTune.z ?? 0}
+              onChange={(e) => setChromeVideo({ z: Number(e.target.value) })}
             />
           </Row>
-          <Row label="round" value={Math.round(videoTune.radius ?? 0)}>
+          <Row label="round" value={Math.round(chromeTune.radius ?? 0)}>
             <input
               type="range"
               min="0"
               max="160"
               step="1"
-              value={videoTune.radius ?? 0}
-              onChange={(e) => setVideoTune({ radius: Number(e.target.value) })}
+              value={chromeTune.radius ?? 0}
+              onChange={(e) => setChromeVideo({ radius: Number(e.target.value) })}
             />
           </Row>
-          <Row label="parallax" value={Number(videoTune.parallax ?? 1).toFixed(2)}>
+          <Row label="parallax" value={Number(chromeTune.parallax ?? 1).toFixed(2)}>
             <input
               type="range"
               min="0"
               max="2.5"
               step="0.05"
-              value={videoTune.parallax ?? 1}
-              onChange={(e) => setVideoTune({ parallax: Number(e.target.value) })}
+              value={chromeTune.parallax ?? 1}
+              onChange={(e) => setChromeVideo({ parallax: Number(e.target.value) })}
             />
           </Row>
         </Section>
@@ -796,15 +806,14 @@ export function App() {
             />
             {hasEffect(config, "letter", "box") && (
               <>
-                <EngineTabs value={engineTab} onChange={setEngineTab} />
-                <Row label="front" value={Number(videoTune.front ?? 0).toFixed(3)}>
+                <Row label="front" value={Number(chromeTune.front ?? 0).toFixed(3)}>
                   <input
                     type="range"
                     min="0"
                     max="1"
                     step="0.005"
-                    value={videoTune.front ?? 0}
-                    onChange={(e) => setVideoTune({ front: Number(e.target.value) })}
+                    value={chromeTune.front ?? 0}
+                    onChange={(e) => setChromeVideo({ front: Number(e.target.value) })}
                   />
                 </Row>
                 <Row label="pad" value={Number(getEffect(config, "letter", "box")?.extraWidth ?? 0).toFixed(2)}>
@@ -896,6 +905,7 @@ export function App() {
               </>
             )}
           </Fx>
+          {!isSafari() && (
           <Fx>
             <Toggle
               label="fisheye"
@@ -962,6 +972,7 @@ export function App() {
               </>
             )}
           </Fx>
+          )}
         </Section>
 
         <Section title="Glyph">
