@@ -357,12 +357,6 @@ export function App() {
         </div>
       )}
 
-      {uiHidden && (
-        <button className="ui-toggle" type="button" onClick={() => setUiHidden(false)}>
-          ui
-        </button>
-      )}
-
       <aside className="panel">
         <header className="panel-head">
           <h1>

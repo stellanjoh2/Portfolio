@@ -1,7 +1,7 @@
-import videoUrl from "../assets/featureloop-virtualstudio.mp4?url";
+import videoUrl from "../assets/microloop.mp4?url";
 import { isSafari } from "./browser.js";
 
-export const DEFAULT_TEXT = "Welcome to my stupid homepage";
+export const DEFAULT_TEXT = "This is true next-gen brand engineering";
 
 export const DEFAULT_BASE_FONT = '"PP Monument Wide"';
 
@@ -10,7 +10,7 @@ export const DEFAULT_VIDEO = videoUrl;
 export const ENGINE_KEYS = ["chrome", "safari"];
 
 const DEFAULT_VIDEO_TUNING = {
-  scale: 1.45,
+  scale: 1.05,
   z: 1,
   front: 0.505,
   radius: 36,

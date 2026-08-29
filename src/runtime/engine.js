@@ -89,10 +89,12 @@ export function createEngine(root, initialConfig) {
 
     if (word !== prevWord) {
       if (prevWord) {
+        prevWord.classList.remove("tfx-word--hot");
         fire(effects.word, "leave", makeCtx({ el: prevWord, target: "word" }));
       }
       hover.wordEl = word;
       if (hover.wordEl) {
+        hover.wordEl.classList.add("tfx-word--hot");
         fire(effects.word, "enter", makeCtx({ el: hover.wordEl, target: "word" }));
       }
     }
@@ -163,6 +165,7 @@ export function createEngine(root, initialConfig) {
       fire(effects.letter, "leave", makeCtx({ el: hover.charEl, target: "letter" }));
     }
     if (hover.wordEl) {
+      hover.wordEl.classList.remove("tfx-word--hot");
       fire(effects.word, "leave", makeCtx({ el: hover.wordEl, target: "word" }));
     }
     hover.charEl = null;

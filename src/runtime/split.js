@@ -39,6 +39,9 @@ export function applyBase(root, config) {
   root.style.marginRight = align === "right" ? "0" : "auto";
   root.style.color = config.base.color;
   root.style.setProperty("--tfx-color-neutral", config.base.color);
+  const wordColor = (config.word?.effects || []).find((e) => e.type === "color")?.color;
+  if (wordColor) root.style.setProperty("--tfx-color-word", wordColor);
+  else root.style.removeProperty("--tfx-color-word");
   applyVideoStyles(root, config.video);
   root.querySelectorAll(".tfx-char").forEach((char) => {
     char.classList.toggle("tfx-char--space", !String(char.dataset.tfxChar || "").trim());

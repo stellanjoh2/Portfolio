@@ -2,6 +2,7 @@
   position: relative;
   display: block;
   padding: 28px 12px;
+  --tfx-color-hover-box: #ff00ff;
 }
 
 .tfx-root,
@@ -51,6 +52,10 @@
 .tfx-root--boxes .tfx-char:not(.tfx-char--space):not(.tfx-char--hot) {
   outline: 1px solid var(--tfx-color-neutral);
   outline-offset: 0;
+}
+
+.tfx-root--boxes .tfx-word--hot .tfx-char:not(.tfx-char--space):not(.tfx-char--hot) {
+  outline-color: var(--tfx-color-word, var(--tfx-color-neutral));
 }
 
 .tfx-glyph {
@@ -132,12 +137,13 @@
   border-right: 1px solid currentColor;
 }
 
-.tfx-box--word {
-  color: var(--tfx-color-word, #d4d4d4);
+.tfx-box--word,
+.tfx-box--letter,
+.tfx-details {
+  color: var(--tfx-color-hover-box, #ff00ff);
 }
 
 .tfx-box--letter {
-  color: var(--tfx-color-letter, #ffffff);
   border: 1px solid currentColor;
 }
 
@@ -146,7 +152,6 @@
   top: 0;
   left: 0;
   opacity: 0;
-  color: var(--tfx-color-letter, #ffffff);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.035em;
   font-weight: 500;

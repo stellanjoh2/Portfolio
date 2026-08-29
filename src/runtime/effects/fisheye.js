@@ -1,5 +1,5 @@
 import { isSafari } from "../browser.js";
-import { glyphAnchor } from "../glyphBounds.js";
+import { glyphAnchor, inkClientRect } from "../glyphBounds.js";
 
 const VS = `#version 300 es
 in vec2 aPos;
@@ -272,6 +272,25 @@ function localRect(el, box) {
   };
 }
 
+function homeClientRect(char, gsap) {
+  if (!char) return null;
+  const scale = Number(gsap.getProperty(char, "scale")) || 1;
+  const cr = char.getBoundingClientRect();
+  const ow = char.offsetWidth || 1;
+  const oh = char.offsetHeight || 1;
+  const parts = getComputedStyle(char).transformOrigin.split(" ");
+  const ox = parseFloat(parts[0]) || ow / 2;
+  const oy = parseFloat(parts[1]) || oh / 2;
+  const cssX = cr.width / (ow * scale);
+  const cssY = cr.height / (oh * scale);
+  return {
+    left: cr.left - ox * cssX * (1 - scale),
+    top: cr.top - oy * cssY * (1 - scale),
+    width: ow * cssX,
+    height: oh * cssY,
+  };
+}
+
 function backingSize(cssW, cssH) {
   const dpr = Math.min(1.25, window.devicePixelRatio || 1);
   let bw = Math.max(1, Math.round(cssW * dpr));
@@ -453,6 +472,7 @@ export function fisheye(opts, api) {
         ch,
         cs: getComputedStyle(glyph),
         placed,
+        char,
         letterHot: char === hover.charEl,
         wordHot: hover.wordEl && hover.wordEl.contains(char),
         letterGlow,
@@ -471,15 +491,14 @@ export function fisheye(opts, api) {
     c.textBaseline = "alphabetic";
     c.shadowColor = "transparent";
     c.shadowBlur = 0;
-    if (draw.letterHot && draw.letterGlow) {
-      c.shadowColor = draw.letterGlow.color ?? "#ffffff";
-      c.shadowBlur = draw.letterGlow.size ?? 4;
-    } else if (draw.wordHot && draw.wordGlow) {
-      c.shadowColor = draw.wordGlow.color ?? "#ffffff";
-      c.shadowBlur = draw.wordGlow.size ?? 12;
-    }
     c.fillText(draw.ch, p.x, p.y);
-    c.shadowBlur = 0;
+  }
+
+  function hoverMark() {
+    return (
+      getComputedStyle(api.root).getPropertyValue("--tfx-color-hover-box").trim() ||
+      "#ff00ff"
+    );
   }
 
   function stamp() {
@@ -489,21 +508,50 @@ export function fisheye(opts, api) {
     const draws = collectDraws();
     for (const draw of draws) {
       if (draw.letterHot) continue;
+      if (draw.wordHot && draw.wordGlow) {
+        const alpha = glowAlpha(draw.char, "word");
+        if (alpha > 0.01) paintGlow(ctx, draw, draw.wordGlow, alpha);
+      }
       paintGlyph(ctx, draw);
     }
     stampGrid();
-    stampLetterBox();
+    stampHoverBox(ctx, homeClientRect(api.getHover().charEl, api.gsap));
     stampLetter(draws);
+  }
+
+  function glowAlpha(char, layer) {
+    const node = char?.querySelector(layer === "letter" ? ".tfx-glow--letter" : ".tfx-glow--word");
+    return Number(api.gsap.getProperty(node, "opacity")) || 0;
+  }
+
+  function paintGlow(c, draw, spec, alpha) {
+    const p = localFromClient(canvas, draw.placed.x, draw.placed.y);
+    const size = (parseFloat(draw.cs.fontSize) || 16) * draw.placed.scale;
+    c.save();
+    c.font = `${draw.cs.fontStyle} ${draw.cs.fontWeight} ${size}px ${draw.cs.fontFamily}`;
+    c.fillStyle = spec.color ?? "#ffffff";
+    c.textAlign = "center";
+    c.textBaseline = "alphabetic";
+    c.globalAlpha = alpha;
+    c.filter = `blur(${spec.size ?? 8}px)`;
+    c.fillText(draw.ch, p.x, p.y);
+    c.restore();
   }
 
   function stampLetter(draws) {
     const dpr = offLetter.width / cssW;
     lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     lctx.clearRect(0, 0, cssW, cssH);
+    const char = api.getHover().charEl;
     for (const draw of draws) {
       if (!draw.letterHot) continue;
+      if (draw.letterGlow) {
+        const alpha = glowAlpha(draw.char, "letter");
+        if (alpha > 0.01) paintGlow(lctx, draw, draw.letterGlow, alpha);
+      }
       paintGlyph(lctx, draw);
     }
+    stampHoverBox(lctx, char ? inkClientRect(char) : null);
   }
 
   function hudOpacity(node) {
@@ -536,7 +584,9 @@ export function fisheye(opts, api) {
     ctx.lineJoin = "miter";
     ctx.lineCap = "square";
     ctx.globalAlpha = 1;
-    ctx.strokeStyle =
+    const hover = api.getHover();
+    const wordColor = (config.word?.effects || []).find((e) => e.type === "color")?.color;
+    const neutral =
       getComputedStyle(api.root).getPropertyValue("--tfx-color-neutral").trim() ||
       config.base.color;
     ctx.lineWidth = 1;
@@ -547,24 +597,26 @@ export function fisheye(opts, api) {
       const box = char.getBoundingClientRect();
       if (!box.width && !box.height) continue;
       const r = localRect(canvas, box);
+      const lit = wordColor && hover.wordEl?.contains(char);
+      ctx.strokeStyle = lit ? wordColor : neutral;
       ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h);
     }
   }
 
-  function stampLetterBox() {
+  function stampHoverBox(c, box) {
     const letter = api.root.querySelector(".tfx-box--letter");
     const aLetter = hudOpacity(letter);
-    if (aLetter <= 0.01) return;
-    const r = localRect(canvas, letter.getBoundingClientRect());
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.lineJoin = "miter";
-    ctx.lineCap = "square";
-    ctx.globalAlpha = aLetter;
-    ctx.strokeStyle = getComputedStyle(letter).color;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h);
-    ctx.globalAlpha = 1;
+    if (aLetter <= 0.01 || !box || (!box.width && !box.height)) return;
+    const r = localRect(canvas, box);
+    c.shadowColor = "transparent";
+    c.shadowBlur = 0;
+    c.lineJoin = "miter";
+    c.lineCap = "square";
+    c.globalAlpha = aLetter;
+    c.strokeStyle = hoverMark();
+    c.lineWidth = 1;
+    c.strokeRect(r.x + 0.5, r.y + 0.5, r.w, r.h);
+    c.globalAlpha = 1;
   }
 
   function stampHud() {
@@ -579,12 +631,13 @@ export function fisheye(opts, api) {
     hctx.lineCap = "square";
     hctx.lineWidth = 1;
 
+    const mark = hoverMark();
     const word = api.root.querySelector(".tfx-box--word");
     const aWord = hudOpacity(word);
     if (aWord > 0.01) {
       const r = localRect(canvas, word.getBoundingClientRect());
       hctx.globalAlpha = aWord;
-      hctx.strokeStyle = getComputedStyle(word).color;
+      hctx.strokeStyle = mark;
       strokeCorners(hctx, r, tick);
     }
 
@@ -593,7 +646,7 @@ export function fisheye(opts, api) {
     if (aLetter > 0.01) {
       const r = localRect(canvas, letter.getBoundingClientRect());
       hctx.globalAlpha = aLetter;
-      hctx.strokeStyle = getComputedStyle(letter).color;
+      hctx.strokeStyle = mark;
       strokeCorners(hctx, r, tick);
     }
 
@@ -603,7 +656,7 @@ export function fisheye(opts, api) {
       const r = localRect(canvas, details.getBoundingClientRect());
       const cs = getComputedStyle(details);
       hctx.globalAlpha = aDetails;
-      hctx.fillStyle = cs.color;
+      hctx.fillStyle = mark;
       hctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       hctx.textAlign = "left";
       hctx.textBaseline = "top";

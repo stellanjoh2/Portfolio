@@ -19,8 +19,8 @@
 
 html {
   margin: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
+  overscroll-behavior: none;
   background: var(--bg);
   color: var(--ink);
 }
@@ -96,26 +96,6 @@ body {
 
 .editor--ui-hidden .panel {
   display: none;
-}
-
-.ui-toggle {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 10;
-  padding: 8px 10px;
-  background: transparent;
-  color: #8a8a8a;
-  border: 1px solid #2a2e38;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.ui-toggle:hover {
-  color: #e7e4dc;
-  border-color: #e7e4dc;
 }
 
 .fps {
