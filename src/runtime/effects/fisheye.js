@@ -24,6 +24,8 @@ uniform float uRadius;
 uniform float uVideoZ;
 uniform float uLetterZ;
 uniform float uHudZ;
+uniform float uTextZ;
+uniform float uTextZoom;
 uniform float uParallax;
 uniform float uChroma;
 
@@ -43,7 +45,12 @@ vec4 scene(vec2 uv) {
   float bulge = k * 0.32 * (1.0 - nr * nr);
   vec2 travel = look - world;
 
-  vec2 textUv = look + (uv - look) * (1.0 - bulge);
+  vec2 textWarp = look + (uv - look) * (1.0 - bulge);
+  float tz = max(uTextZ, 0.0);
+  float textFar = 1.0 + tz;
+  vec2 textUv = world + (textWarp - world - travel * (1.0 - 1.0 / textFar) * uParallax) * textFar;
+  float zoom = max(uTextZoom, 0.01);
+  textUv = world + (textUv - world) / zoom;
   vec4 text = sampleLayer(uTex, textUv);
 
   float z = max(uVideoZ, 0.0);
@@ -160,6 +167,8 @@ function makeGL(canvas) {
   const uVideoZ = gl.getUniformLocation(prog, "uVideoZ");
   const uLetterZ = gl.getUniformLocation(prog, "uLetterZ");
   const uHudZ = gl.getUniformLocation(prog, "uHudZ");
+  const uTextZ = gl.getUniformLocation(prog, "uTextZ");
+  const uTextZoom = gl.getUniformLocation(prog, "uTextZoom");
   const uParallax = gl.getUniformLocation(prog, "uParallax");
   const uChroma = gl.getUniformLocation(prog, "uChroma");
 
@@ -204,6 +213,8 @@ function makeGL(canvas) {
       const front = Math.max(0, Number(video.front) || 0);
       gl.uniform1f(uLetterZ, state.letterZ ?? front * 0.5);
       gl.uniform1f(uHudZ, front);
+      gl.uniform1f(uTextZ, Math.max(0, Number(state.textZ) || 0));
+      gl.uniform1f(uTextZoom, Math.max(0.01, Number(state.textZoom) || 1));
       gl.uniform1f(uParallax, video.parallax == null ? 1 : Math.max(0, Number(video.parallax)));
       gl.uniform1f(uChroma, Math.max(0, Number(chroma) || 0));
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -332,8 +343,11 @@ export function fisheye(opts, api) {
   probe.height = 8;
   const probeCtx = probe.getContext("2d", { willReadFrequently: true });
   const gpu = makeGL(canvas);
-  const state = { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0 };
+  const GROUP_IDLE_Z = 0.16;
+  const GROUP_HOVER_ZOOM = 1.055;
+  const state = { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0, textZ: GROUP_IDLE_Z, textZoom: 1 };
   let releasing = null;
+  let groupHot = false;
   let cxTo = api.gsap.quickTo(state, "cx", { duration: 0.45, ease: "power3.out" });
   let cyTo = api.gsap.quickTo(state, "cy", { duration: 0.45, ease: "power3.out" });
   let live = false;
@@ -746,6 +760,18 @@ export function fisheye(opts, api) {
     });
   }
 
+  function tweenGroup(hot) {
+    groupHot = hot;
+    const hover = api.getConfig().hover;
+    api.gsap.to(state, {
+      textZ: hot ? 0 : GROUP_IDLE_Z,
+      textZoom: hot ? GROUP_HOVER_ZOOM : 1,
+      duration: api.reduceMotion ? 0 : hover?.duration ?? 0.25,
+      ease: hover?.ease ?? "power2.out",
+      overwrite: "auto",
+    });
+  }
+
   function setLive(on) {
     if (api.reduceMotion) on = false;
     if (on === live) {
@@ -764,8 +790,9 @@ export function fisheye(opts, api) {
       return;
     }
     api.gsap.killTweensOf(state);
-    api.gsap.set(state, { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0 });
+    api.gsap.set(state, { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0, textZ: GROUP_IDLE_Z, textZoom: 1 });
     releasing = null;
+    groupHot = false;
     stopLoop();
     hide();
   }
@@ -799,6 +826,7 @@ export function fisheye(opts, api) {
   return {
     enter() {
       releasing = null;
+      tweenGroup(true);
       tweenLetterZ(letterFront());
     },
     leave({ el }) {
@@ -812,11 +840,15 @@ export function fisheye(opts, api) {
       });
     },
     leaveField() {
+      tweenGroup(false);
       if (api.getHover().charEl) return;
       tweenLetterZ(0);
     },
     move({ pointer }) {
-      if (live && pointer) aim(pointer.x, pointer.y);
+      if (live && pointer) {
+        aim(pointer.x, pointer.y);
+        if (!groupHot) tweenGroup(true);
+      }
     },
     pause() {
       setLive(false);
