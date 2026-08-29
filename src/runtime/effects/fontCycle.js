@@ -47,8 +47,9 @@ function clearFace(el) {
   });
 }
 
-function restore(el) {
-  if (!el) return;
+const MORPH = { duration: 0.25, ease: "power2.out" };
+
+function restoreFace(el) {
   el.style.fontFamily = "";
   el.style.fontWeight = "";
   clearFace(el);
@@ -57,11 +58,17 @@ function restore(el) {
   homeTransform(el);
 }
 
+function glyphBox(el) {
+  const r = el.querySelector(".tfx-glyph")?.getBoundingClientRect();
+  return r && r.height ? r : null;
+}
+
 export function fontCycle(opts, api) {
   let timer = 0;
   let index = 0;
   let current = null;
   let original = "";
+  let morphNext = false;
 
   function fontsOf() {
     const fonts = [...(opts.fonts || [])];
@@ -72,8 +79,24 @@ export function fontCycle(opts, api) {
     return [base, ...fonts];
   }
 
+  function isHomeFace(spec) {
+    return !glyphOf(spec) && faceName(spec) === faceName(api.getConfig().base?.fontFamily);
+  }
+
+  function morphScale(el, before) {
+    const after = glyphBox(el);
+    const from = before && after ? before.height / after.height : 1;
+    api.gsap.killTweensOf(el, "--tfx-cycle-scale");
+    if (!Number.isFinite(from) || Math.abs(from - 1) < 0.02) {
+      el.style.removeProperty("--tfx-cycle-scale");
+      return;
+    }
+    api.gsap.fromTo(el, { "--tfx-cycle-scale": from }, { ...MORPH, "--tfx-cycle-scale": 1, overwrite: "auto" });
+  }
+
   function apply(el, spec) {
     const home = el.dataset.tfxChar || original;
+    const before = morphNext && !api.reduceMotion ? glyphBox(el) : null;
     const glyph = glyphOf(spec);
     if (glyph) {
       paintFace(el, `"${SKULLZ_FAMILY}"`, "400");
@@ -86,6 +109,19 @@ export function fontCycle(opts, api) {
       paintText(el, home);
       homeTransform(el);
     }
+    if (morphNext) {
+      morphNext = false;
+      if (before) morphScale(el, before);
+    }
+  }
+
+  function restore(el, morph) {
+    if (!el) return;
+    const before = morph && !api.reduceMotion ? glyphBox(el) : null;
+    api.gsap.killTweensOf(el, "--tfx-cycle-scale");
+    restoreFace(el);
+    if (before) morphScale(el, before);
+    else el.style.removeProperty("--tfx-cycle-scale");
   }
 
   function tick(el, spec) {
@@ -101,17 +137,20 @@ export function fontCycle(opts, api) {
   function startCycle(el, fonts) {
     halt();
     if (!fonts.length) return;
-    index = 0;
-    tick(el, fonts[0]);
+    const first = fonts.findIndex((font) => !isHomeFace(font));
+    index = first >= 0 ? first : 0;
+    morphNext = true;
+    tick(el, fonts[index]);
     timer = window.setInterval(() => {
       index = (index + 1) % fonts.length;
       if (current) tick(current, fonts[index]);
     }, opts.interval ?? 90);
   }
 
-  function stop(el) {
+  function stop(el, morph = true) {
     halt();
-    if (el) restore(el);
+    morphNext = false;
+    if (el) restore(el, morph);
     current = null;
     original = "";
   }
@@ -126,7 +165,7 @@ export function fontCycle(opts, api) {
     },
     leave({ el }) {
       if (el === current) stop(el);
-      else if (el) restore(el);
+      else if (el) restore(el, true);
     },
     leaveField() {
       stop(current);
@@ -135,7 +174,7 @@ export function fontCycle(opts, api) {
       Object.assign(opts, next);
     },
     destroy() {
-      stop(current);
+      stop(current, false);
     },
   };
 }

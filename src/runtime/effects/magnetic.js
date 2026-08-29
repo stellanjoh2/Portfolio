@@ -105,8 +105,8 @@ export function magnetic(opts, api) {
       api.gsap.to(nodes, {
         x: 0,
         y: 0,
-        duration: api.reduceMotion ? 0 : opts.release ?? 0.95,
-        ease: opts.releaseEase ?? "elastic.out(1, 0.55)",
+        duration: api.reduceMotion ? 0 : opts.release ?? 0.25,
+        ease: opts.releaseEase ?? "power2.out",
         overwrite: false,
         onComplete() {
           if (!hovering) promote(false);

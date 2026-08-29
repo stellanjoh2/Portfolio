@@ -219,13 +219,13 @@ export function App() {
     return () => cancelAnimationFrame(raf);
   }, [fpsOn]);
 
-  const wordColor = getEffect(config, "word", "color")?.color ?? "#e1ff00";
+  const wordColor = getEffect(config, "word", "color")?.color ?? "#C4FF00";
   const letterColor = getEffect(config, "letter", "color")?.color ?? "#ffffff";
   const wordGlow = getEffect(config, "word", "glow");
   const letterGlow = getEffect(config, "letter", "glow");
   const wordGlowSize = wordGlow?.size ?? 12;
   const letterGlowSize = letterGlow?.size ?? 34;
-  const wordGlowColor = wordGlow?.color ?? "#c8ff00";
+  const wordGlowColor = wordGlow?.color ?? "#C4FF00";
   const letterGlowColor = letterGlow?.color ?? "#ffffff";
   const letterScale = getEffect(config, "letter", "scale");
   const magnetic = getEffect(config, "letter", "magnetic");

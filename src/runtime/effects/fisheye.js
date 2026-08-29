@@ -202,7 +202,7 @@ function makeGL(canvas) {
       gl.uniform1f(uRadius, radius);
       gl.uniform1f(uVideoZ, Math.max(0, Number(video.z) || 0));
       const front = Math.max(0, Number(video.front) || 0);
-      gl.uniform1f(uLetterZ, front * 0.5);
+      gl.uniform1f(uLetterZ, state.letterZ ?? front * 0.5);
       gl.uniform1f(uHudZ, front);
       gl.uniform1f(uParallax, video.parallax == null ? 1 : Math.max(0, Number(video.parallax)));
       gl.uniform1f(uChroma, Math.max(0, Number(chroma) || 0));
@@ -234,7 +234,8 @@ function localFromClient(el, clientX, clientY) {
 }
 
 function scaledGlyphCenter(char, glyph, gsap) {
-  const scale = Number(gsap.getProperty(char, "scale")) || 1;
+  const cycle = parseFloat(getComputedStyle(char).getPropertyValue("--tfx-cycle-scale"));
+  const scale = (Number(gsap.getProperty(char, "scale")) || 1) * (Number.isFinite(cycle) && cycle > 0 ? cycle : 1);
   const mx = Number(gsap.getProperty(char, "x")) || 0;
   const my = Number(gsap.getProperty(char, "y")) || 0;
   const parts = getComputedStyle(char).transformOrigin.split(" ");
@@ -331,7 +332,8 @@ export function fisheye(opts, api) {
   probe.height = 8;
   const probeCtx = probe.getContext("2d", { willReadFrequently: true });
   const gpu = makeGL(canvas);
-  const state = { strength: 0, cx: 0.5, cy: 0.5 };
+  const state = { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0 };
+  let releasing = null;
   let cxTo = api.gsap.quickTo(state, "cx", { duration: 0.45, ease: "power3.out" });
   let cyTo = api.gsap.quickTo(state, "cy", { duration: 0.45, ease: "power3.out" });
   let live = false;
@@ -473,7 +475,7 @@ export function fisheye(opts, api) {
         cs: getComputedStyle(glyph),
         placed,
         char,
-        letterHot: char === hover.charEl,
+        letterHot: char === hover.charEl || char === releasing,
         wordHot: hover.wordEl && hover.wordEl.contains(char),
         letterGlow,
         wordGlow,
@@ -497,7 +499,7 @@ export function fisheye(opts, api) {
   function hoverMark() {
     return (
       getComputedStyle(api.root).getPropertyValue("--tfx-color-hover-box").trim() ||
-      "#ff00ff"
+      "#ff00c4"
     );
   }
 
@@ -721,9 +723,26 @@ export function fisheye(opts, api) {
     const hover = api.getConfig().hover;
     api.gsap.to(state, {
       strength: api.reduceMotion ? 0 : Math.max(0, Math.min(1, value)),
-      duration: api.reduceMotion ? 0 : hover?.duration ?? 0.18,
+      duration: api.reduceMotion ? 0 : hover?.duration ?? 0.25,
       ease: hover?.ease ?? "power2.out",
       overwrite: "auto",
+    });
+  }
+
+  function letterFront() {
+    return Math.max(0, Number(api.getConfig().video?.front) || 0) * 0.5;
+  }
+
+  function tweenLetterZ(value) {
+    const hover = api.getConfig().hover;
+    api.gsap.to(state, {
+      letterZ: api.reduceMotion ? 0 : Math.max(0, value),
+      duration: api.reduceMotion ? 0 : hover?.duration ?? 0.25,
+      ease: hover?.ease ?? "power2.out",
+      overwrite: "auto",
+      onComplete() {
+        if (state.letterZ < 0.001) releasing = null;
+      },
     });
   }
 
@@ -745,7 +764,8 @@ export function fisheye(opts, api) {
       return;
     }
     api.gsap.killTweensOf(state);
-    api.gsap.set(state, { strength: 0, cx: 0.5, cy: 0.5 });
+    api.gsap.set(state, { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0 });
+    releasing = null;
     stopLoop();
     hide();
   }
@@ -777,6 +797,24 @@ export function fisheye(opts, api) {
   syncLive();
 
   return {
+    enter() {
+      releasing = null;
+      tweenLetterZ(letterFront());
+    },
+    leave({ el }) {
+      releasing = el;
+      queueMicrotask(() => {
+        if (api.getHover().charEl) {
+          if (releasing === el) releasing = null;
+          return;
+        }
+        tweenLetterZ(0);
+      });
+    },
+    leaveField() {
+      if (api.getHover().charEl) return;
+      tweenLetterZ(0);
+    },
     move({ pointer }) {
       if (live && pointer) aim(pointer.x, pointer.y);
     },

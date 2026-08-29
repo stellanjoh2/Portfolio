@@ -39,18 +39,18 @@ export function defaultConfig() {
       lineHeight: 0.95,
       width: 1568,
       align: "center",
-      color: "#3600b3",
+      color: "#3B00FF",
       boxes: true,
     },
     hover: {
-      duration: 0.18,
-      ease: "elastic.out(1, 0.5)",
+      duration: 0.25,
+      ease: "power2.out",
       originY: 50,
     },
     word: {
       effects: [
-        { type: "color", color: "#e1ff00" },
-        { type: "glow", size: 14, color: "#c8ff00" },
+        { type: "color", color: "#C4FF00" },
+        { type: "glow", size: 14, color: "#C4FF00" },
       ],
     },
     letter: {
