@@ -193,11 +193,11 @@ export function placeLetters(root, originY) {
   }
 
   chars.forEach((char) => {
-    if (char.classList.contains("tfx-char--hot")) return;
     const glyph = char.querySelector(".tfx-glyph");
     if (!glyph) return;
-    const nodes = char.querySelectorAll(".tfx-glyph, .tfx-glow");
     char.dataset.tfxLetterY = String(y);
+    if (char.classList.contains("tfx-char--hot")) return;
+    const nodes = char.querySelectorAll(".tfx-glyph, .tfx-glow");
     const tr = y ? `translateY(${y}px)` : "";
     nodes.forEach((node) => {
       node.style.transform = tr;

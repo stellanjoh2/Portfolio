@@ -56,7 +56,7 @@ export function defaultConfig() {
     letter: {
       effects: [
         { type: "color", color: "#ffffff" },
-        { type: "scale", amount: 1.5 },
+        { type: "scale", amount: 1.125 },
         { type: "glow", size: 4, color: "#ffffff" },
         {
           type: "fontCycle",

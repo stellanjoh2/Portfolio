@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { FONT_CREDITS } from "./fontCredits.js";
+import showreelUrl from "./assets/featureloop-virtualstudio.mp4?url";
 import { isSafari } from "./runtime/browser.js";
 import {
   CYCLE_FONTS,
@@ -13,6 +14,23 @@ import {
   setEffect,
   setGlyphMode,
 } from "./runtime/index.js";
+
+/** Temporary public holding page. Flip to false to restore the TextFX editor/stage. */
+const HOLDING_PAGE = true;
+
+function holdingConfig() {
+  const d = defaultConfig();
+  return {
+    ...d,
+    // Same type plate as the full stage so video/parallax keep the old framing; paint stays invisible.
+    text: d.text,
+    base: { ...d.base, boxes: false, color: "rgba(0,0,0,0)" },
+    word: { effects: [] },
+    letter: {
+      effects: [{ type: "fisheye", strength: 1, radius: 2661, look: 1, chroma: 0.02 }],
+    },
+  };
+}
 
 const EASES = [
   "power1.out",
@@ -134,6 +152,7 @@ function bestLocalFace(faces, targetWeight) {
 export function App() {
   const stageRef = useRef(null);
   const heroRef = useRef(null);
+  const playRef = useRef(null);
   const instRef = useRef(null);
   const fontFileRef = useRef(null);
   const fontsLoaded = useRef(false);
@@ -151,9 +170,11 @@ export function App() {
   const [pendingFont, setPendingFont] = useState(null);
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [engineTab, setEngineTab] = useState(() => (isSafari() ? "safari" : "chrome"));
+  const [reelOpen, setReelOpen] = useState(false);
 
   useEffect(() => {
-    const inst = mount(stageRef.current, config);
+    const start = HOLDING_PAGE ? holdingConfig() : config;
+    const inst = mount(stageRef.current, start);
     instRef.current = inst;
     skipUpdate.current = true;
 
@@ -174,6 +195,63 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!HOLDING_PAGE) return;
+    const hero = heroRef.current;
+    const play = playRef.current;
+    if (!hero || !play) return;
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const parallax = (holdingConfig().video?.chrome?.parallax ?? 0.95) * 1.35;
+    const amount = parallax * 96;
+    let raf = 0;
+    let nextX = 0;
+    let nextY = 0;
+    let curX = 0;
+    let curY = 0;
+
+    function tick() {
+      raf = 0;
+      curX += (nextX - curX) * 0.12;
+      curY += (nextY - curY) * 0.12;
+      play.style.transform = `translate3d(${curX.toFixed(2)}px, ${curY.toFixed(2)}px, 0)`;
+      if (Math.abs(nextX - curX) > 0.05 || Math.abs(nextY - curY) > 0.05) {
+        raf = requestAnimationFrame(tick);
+      }
+    }
+
+    function onMove(e) {
+      if (reduce || reelOpen) {
+        nextX = 0;
+        nextY = 0;
+      } else {
+        const box = hero.getBoundingClientRect();
+        if (!box.width || !box.height) return;
+        const nx = Math.max(-0.5, Math.min(0.5, (e.clientX - box.left) / box.width - 0.5));
+        const ny = Math.max(-0.5, Math.min(0.5, (e.clientY - box.top) / box.height - 0.5));
+        nextX = nx * amount;
+        nextY = ny * amount;
+      }
+      if (!raf) raf = requestAnimationFrame(tick);
+    }
+
+    function onLeave() {
+      nextX = 0;
+      nextY = 0;
+      if (!raf) raf = requestAnimationFrame(tick);
+    }
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    hero.addEventListener("pointerleave", onLeave);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      hero.removeEventListener("pointerleave", onLeave);
+      if (raf) cancelAnimationFrame(raf);
+      play.style.transform = "";
+    };
+  }, [reelOpen]);
+
+  useEffect(() => {
+    if (HOLDING_PAGE) return;
     if (skipUpdate.current) {
       skipUpdate.current = false;
       return;
@@ -186,6 +264,13 @@ export function App() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = e.target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (HOLDING_PAGE) {
+        if (e.key === "Escape" && reelOpen) {
+          e.preventDefault();
+          setReelOpen(false);
+        }
+        return;
+      }
       if (e.key === "h" || e.key === "H") {
         e.preventDefault();
         setUiHidden((hidden) => !hidden);
@@ -198,7 +283,7 @@ export function App() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [reelOpen]);
 
   useEffect(() => {
     if (!fpsOn) return;
@@ -341,10 +426,58 @@ export function App() {
     }));
   }
 
+  if (HOLDING_PAGE) {
+    return (
+      <div className="shell shell--holding">
+        <div className="hero" ref={heroRef}>
+          <div className="site-mark" aria-hidden="true" />
+          <a className="site-contact" href="mailto:hello@stellanjohansson.com">
+            Contact me
+          </a>
+          <div className="artboard">
+            <div className="editor editor--ui-hidden">
+              <div className="stage">
+                <div className="preview" ref={stageRef} />
+              </div>
+            </div>
+          </div>
+          <div className="holding">
+            <button
+              ref={playRef}
+              type="button"
+              className="holding-play"
+              onClick={() => setReelOpen(true)}
+            >
+              Play showreel
+            </button>
+          </div>
+          {reelOpen && (
+            <div
+              className="holding-reel"
+              role="dialog"
+              aria-label="Showreel"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setReelOpen(false);
+              }}
+            >
+              <button type="button" className="holding-reel-close" onClick={() => setReelOpen(false)}>
+                Close
+              </button>
+              <video src={showreelUrl} autoPlay controls playsInline />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="shell">
     <div className="hero" ref={heroRef}>
-    {/* <div className="hero-logo" aria-hidden="true">S</div> */}
+    <div className="site-mark" aria-hidden="true" />
+    <a className="site-contact" href="mailto:hello@stellanjohansson.com">
+      Contact me
+    </a>
     <div className="artboard">
     <div className={uiHidden ? "editor editor--ui-hidden" : "editor"}>
       <div className="stage">
@@ -667,19 +800,19 @@ export function App() {
               onChange={(on) =>
                 setConfig(
                   setEffect(config, "letter", "scale", on, {
-                    amount: letterScale?.amount ?? 1.5,
+                    amount: letterScale?.amount ?? 1.125,
                   })
                 )
               }
             />
             {hasEffect(config, "letter", "scale") && (
-              <Row label="amount" value={`${Number(letterScale?.amount ?? 1.5).toFixed(2)}×`}>
+              <Row label="amount" value={`${Number(letterScale?.amount ?? 1.125).toFixed(2)}×`}>
                 <input
                   type="range"
                   min="1.05"
                   max="3"
                   step="0.05"
-                  value={letterScale?.amount ?? 1.5}
+                  value={letterScale?.amount ?? 1.125}
                   onChange={(e) =>
                     setConfig(
                       patchEffect(config, "letter", "scale", {

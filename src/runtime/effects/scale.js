@@ -1,5 +1,5 @@
 function amountOf(opts) {
-  return opts.amount ?? 1.5;
+  return opts.amount ?? 1.125;
 }
 
 function dur(api, hover) {
@@ -23,7 +23,7 @@ export function scale(opts, api) {
       scale: amountOf(opts),
       duration: dur(api, hover),
       ease: hover?.ease ?? "power2.out",
-      overwrite: false,
+      overwrite: "auto",
     });
   }
 
@@ -34,7 +34,7 @@ export function scale(opts, api) {
       scale: 1,
       duration: dur(api, hover),
       ease: hover?.ease ?? "power2.out",
-      overwrite: false,
+      overwrite: "auto",
       onInterrupt() {
         api.gsap.set(el, { scale: 1 });
       },
@@ -58,7 +58,7 @@ export function scale(opts, api) {
         scale: 1,
         duration: dur(api, hover),
         ease: hover?.ease ?? "power2.out",
-        overwrite: false,
+        overwrite: "auto",
         onInterrupt() {
           api.gsap.set(nodes, { scale: 1 });
         },

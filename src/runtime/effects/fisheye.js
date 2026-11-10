@@ -28,6 +28,7 @@ uniform float uTextZ;
 uniform float uTextZoom;
 uniform float uParallax;
 uniform float uChroma;
+uniform vec2 uPopAnchor;
 
 vec4 sampleLayer(sampler2D tex, vec2 uv) {
   if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec4(0.0);
@@ -55,20 +56,18 @@ vec4 scene(vec2 uv) {
 
   float z = max(uVideoZ, 0.0);
   float far = 1.0 + z;
-  vec2 farUv = look + (uv - look) * (1.0 - bulge);
-  vec2 videoUv = world + (farUv - world - travel * (1.0 - 1.0 / far) * uParallax) * far;
+  vec2 videoUv = world + (textWarp - world - travel * (1.0 - 1.0 / far) * uParallax) * far;
   vec4 video = sampleLayer(uVideo, videoUv);
 
+  vec2 anchor = uPopAnchor;
   float lz = max(uLetterZ, 0.0);
-  float letterNear = 1.0 + lz;
-  vec2 letterWarp = look + (uv - look) * (1.0 - min(bulge * letterNear, 0.92));
-  vec2 letterUv = world + (letterWarp - world + travel * (1.0 - 1.0 / letterNear) * uParallax) / letterNear;
+  float letterNear = max(1.0 + lz, 0.05);
+  vec2 letterUv = anchor + (textWarp - anchor) / letterNear;
   vec4 letter = sampleLayer(uLetter, letterUv);
 
   float hz = max(uHudZ, 0.0);
-  float near = 1.0 + hz;
-  vec2 nearUv = look + (uv - look) * (1.0 - min(bulge * near, 0.92));
-  vec2 hudUv = world + (nearUv - world + travel * (1.0 - 1.0 / near) * uParallax) / near;
+  float hudNear = max(1.0 + hz, 0.05);
+  vec2 hudUv = anchor + (textWarp - anchor) / hudNear;
   vec4 hud = sampleLayer(uHud, hudUv);
 
   vec4 mid = text + video * (1.0 - text.a);
@@ -171,6 +170,7 @@ function makeGL(canvas) {
   const uTextZoom = gl.getUniformLocation(prog, "uTextZoom");
   const uParallax = gl.getUniformLocation(prog, "uParallax");
   const uChroma = gl.getUniformLocation(prog, "uChroma");
+  const uPopAnchor = gl.getUniformLocation(prog, "uPopAnchor");
 
   return {
     resize(w, h) {
@@ -217,6 +217,11 @@ function makeGL(canvas) {
       gl.uniform1f(uTextZoom, Math.max(0.01, Number(state.textZoom) || 1));
       gl.uniform1f(uParallax, video.parallax == null ? 1 : Math.max(0, Number(video.parallax)));
       gl.uniform1f(uChroma, Math.max(0, Number(chroma) || 0));
+      gl.uniform2f(
+        uPopAnchor,
+        Number.isFinite(state.popAx) ? state.popAx : 0.5,
+        Number.isFinite(state.popAy) ? state.popAy : 0.5
+      );
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },
     destroy() {
@@ -344,8 +349,17 @@ export function fisheye(opts, api) {
   const probeCtx = probe.getContext("2d", { willReadFrequently: true });
   const gpu = makeGL(canvas);
   const GROUP_IDLE_Z = 0.16;
-  const GROUP_HOVER_ZOOM = 1.055;
-  const state = { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0, textZ: GROUP_IDLE_Z, textZoom: 1 };
+  const GROUP_HOVER_ZOOM = 1.04;
+  const state = {
+    strength: 0,
+    cx: 0.5,
+    cy: 0.5,
+    letterZ: 0,
+    textZ: GROUP_IDLE_Z,
+    textZoom: 1,
+    popAx: 0.5,
+    popAy: 0.5,
+  };
   let releasing = null;
   let groupHot = false;
   let cxTo = api.gsap.quickTo(state, "cx", { duration: 0.45, ease: "power3.out" });
@@ -499,10 +513,14 @@ export function fisheye(opts, api) {
   }
 
   function paintGlyph(c, draw) {
+    const color = draw.cs.color || "";
+    if (!color || color === "transparent" || /rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/.test(color)) {
+      return;
+    }
     const p = localFromClient(canvas, draw.placed.x, draw.placed.y);
     const size = (parseFloat(draw.cs.fontSize) || 16) * draw.placed.scale;
     c.font = `${draw.cs.fontStyle} ${draw.cs.fontWeight} ${size}px ${draw.cs.fontFamily}`;
-    c.fillStyle = draw.cs.color;
+    c.fillStyle = color;
     c.textAlign = "center";
     c.textBaseline = "alphabetic";
     c.shadowColor = "transparent";
@@ -684,6 +702,22 @@ export function fisheye(opts, api) {
     hctx.globalAlpha = 1;
   }
 
+  function syncPopAnchor() {
+    const char = api.getHover().charEl || releasing;
+    const glyph = char?.querySelector(".tfx-glyph");
+    if (!char || !glyph || !canvas.isConnected) {
+      state.popAx = 0.5;
+      state.popAy = 0.5;
+      return;
+    }
+    const placed = scaledGlyphCenter(char, glyph, api.gsap);
+    const p = localFromClient(canvas, placed.x, placed.y);
+    const w = Math.max(1, cssW);
+    const h = Math.max(1, cssH);
+    state.popAx = Math.max(0, Math.min(1, p.x / w));
+    state.popAy = Math.max(0, Math.min(1, p.y / h));
+  }
+
   function paint() {
     if (!gpu || !canvas.isConnected) return;
     layout();
@@ -691,6 +725,7 @@ export function fisheye(opts, api) {
     stamp();
     stampVideo();
     stampHud();
+    syncPopAnchor();
     gpu.upload(off, offVideo, offLetter, offHud);
     const lookX = state.cx * cssW;
     const lookY = state.cy * cssH;
@@ -790,7 +825,16 @@ export function fisheye(opts, api) {
       return;
     }
     api.gsap.killTweensOf(state);
-    api.gsap.set(state, { strength: 0, cx: 0.5, cy: 0.5, letterZ: 0, textZ: GROUP_IDLE_Z, textZoom: 1 });
+    api.gsap.set(state, {
+      strength: 0,
+      cx: 0.5,
+      cy: 0.5,
+      letterZ: 0,
+      textZ: GROUP_IDLE_Z,
+      textZoom: 1,
+      popAx: 0.5,
+      popAy: 0.5,
+    });
     releasing = null;
     groupHot = false;
     stopLoop();

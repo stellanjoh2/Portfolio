@@ -36,16 +36,25 @@ function emPx(root, em) {
   return (parseFloat(getComputedStyle(root).fontSize) || 16) * em;
 }
 
+function rootUnits(root) {
+  const b = root.getBoundingClientRect();
+  return {
+    b,
+    sx: b.width ? root.clientWidth / b.width : 1,
+    sy: b.height ? root.clientHeight / b.height : 1,
+  };
+}
+
 function place(node, el, root, gsap) {
   if (!node || !el) return;
   const r = visualRect(el);
   if (!r) return;
-  const b = root.getBoundingClientRect();
+  const { b, sx, sy } = rootUnits(root);
   gsap.set(node, {
-    x: r.left - b.left,
-    y: r.top - b.top,
-    width: r.width,
-    height: r.height,
+    x: (r.left - b.left) * sx,
+    y: (r.top - b.top) * sy,
+    width: r.width * sx,
+    height: r.height * sy,
   });
 }
 
@@ -53,12 +62,12 @@ function placeDetails(node, el, root, gsap, text) {
   if (!node || !el) return;
   const r = visualRect(el);
   if (!r) return;
-  const b = root.getBoundingClientRect();
+  const { b, sx, sy } = rootUnits(root);
   const line = emPx(root, 0.035) * 1.3;
   node.textContent = text;
   gsap.set(node, {
-    x: r.left - b.left,
-    y: r.top - b.top - line * 2,
+    x: (r.left - b.left) * sx,
+    y: (r.top - b.top) * sy - line * 2,
   });
 }
 

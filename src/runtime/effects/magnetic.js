@@ -34,21 +34,31 @@ export function magnetic(opts, api) {
   }
 
   function ensureTrackers() {
-    if (trackers.length) return;
+    if (trackers.length === rests.length && rests.length) return;
+    killTrackers();
+    if (!rests.length) capture();
     const follow = opts.follow ?? 0.5;
     trackers = rests.map(({ el }) => ({
       el,
       x: api.gsap.quickTo(el, "x", {
         duration: follow,
         ease: "power3.out",
-        overwrite: false,
+        overwrite: "auto",
       }),
       y: api.gsap.quickTo(el, "y", {
         duration: follow,
         ease: "power3.out",
-        overwrite: false,
+        overwrite: "auto",
       }),
     }));
+  }
+
+  function settleHome() {
+    const nodes = chars();
+    killTrackers();
+    api.gsap.killTweensOf(nodes, "x,y");
+    api.gsap.set(nodes, { x: 0, y: 0 });
+    capture();
   }
 
   function onResize() {
@@ -66,7 +76,7 @@ export function magnetic(opts, api) {
       if (api.reduceMotion) return;
       hovering = true;
       promote(true);
-      if (!rests.length) capture();
+      if (!rests.length || rests.length !== chars().length) capture();
       ensureTrackers();
       const rootB = api.root.getBoundingClientRect();
       const radius = opts.radius ?? 160;
@@ -102,32 +112,37 @@ export function magnetic(opts, api) {
       const nodes = chars();
       killTrackers();
       api.gsap.killTweensOf(nodes, "x,y");
+      if (api.reduceMotion) {
+        settleHome();
+        promote(false);
+        return;
+      }
       api.gsap.to(nodes, {
         x: 0,
         y: 0,
-        duration: api.reduceMotion ? 0 : opts.release ?? 0.25,
+        duration: opts.release ?? 0.25,
         ease: opts.releaseEase ?? "power2.out",
-        overwrite: false,
+        overwrite: "auto",
         onComplete() {
-          if (!hovering) promote(false);
+          if (hovering) return;
+          settleHome();
+          promote(false);
         },
       });
     },
     pause() {
       hovering = false;
-      killTrackers();
-      const nodes = chars();
-      api.gsap.killTweensOf(nodes, "x,y");
-      api.gsap.set(nodes, { x: 0, y: 0 });
+      settleHome();
       promote(false);
     },
     update(next) {
       Object.assign(opts, next);
       killTrackers();
+      if (!hovering) capture();
     },
     destroy() {
       window.removeEventListener("resize", onResize);
-      killTrackers();
+      settleHome();
       rests = [];
       promote(false);
     },
