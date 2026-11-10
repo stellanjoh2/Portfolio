@@ -30,6 +30,8 @@ jobs:
           STAGING=$(mktemp -d)
           cp -a dist/. "$STAGING/"
           touch "$STAGING/.nojekyll"
+          # Keep custom domain across force-pushes to gh-pages
+          printf 'stellanjohansson.com\n' > "$STAGING/CNAME"
           git checkout --orphan gh-pages-deploy
           git rm -rf --quiet . 2>/dev/null || true
           git clean -fdx
