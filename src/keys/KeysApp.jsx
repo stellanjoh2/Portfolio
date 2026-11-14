@@ -235,7 +235,7 @@ export function KeysApp() {
                 <input ref={fileRef} type="file" accept=".otf,.ttf,.woff,.woff2" hidden onChange={onFile} />
               </div>
             )}
-            {range("size", "fontSize", 24, 400, 1)}
+            {range("size", "fontSize", 24, 500, 1)}
             {range("tracking", "tracking", -0.15, 0.2, 0.005, (v) => v.toFixed(3))}
             {range("leading", "leading", 0.7, 1.8, 0.01, (v) => v.toFixed(2))}
             {range("wrap", "maxWidth", 0, 3000, 10, (v) => (v ? v : "off"))}
