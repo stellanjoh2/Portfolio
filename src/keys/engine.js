@@ -1,7 +1,7 @@
 import { gsap } from "gsap";
 import { fontSpec } from "./fonts.js";
 import { mainFace } from "./settings.js";
-import { playKey, primeKeys } from "./sound.js";
+import { playStroke, primeKeys } from "./sound.js";
 
 const REF = 200;
 const BOX_FADE = 140;
@@ -197,32 +197,28 @@ export function createKeys(canvas, initial, { ignore = () => false } = {}) {
     return t;
   }
 
-  function click() {
-    if (s.sound) playKey({ volume: s.soundVolume, variance: s.soundVariance });
-  }
-
-  function flipSounds(c, now) {
-    if (!s.sound || s.flipVolume <= 0) return;
-    for (const step of c.steps.slice(1)) {
-      playKey({ volume: s.soundVolume * s.flipVolume, variance: s.soundVariance, delay: step.at - now });
-    }
+  function stroke(c, now) {
+    if (!s.sound) return;
+    playStroke({
+      volume: s.soundVolume,
+      variance: s.soundVariance,
+      flipDb: s.flipDb,
+      flips: c ? c.steps.slice(1).map((step) => step.at - now) : [],
+    });
   }
 
   function type(ch) {
-    click();
     const now = performance.now();
     const c = { ch, born: now, steps: [], end: now };
-    if (ch.trim()) {
-      c.end = buildSteps(c, now);
-      flipSounds(c, now);
-    }
+    if (ch.trim()) c.end = buildSteps(c, now);
+    stroke(c, now);
     chars.push(c);
     lastKey = now;
     invalidate();
   }
 
   function erase(mode) {
-    if (chars.length) click();
+    if (chars.length) stroke(null);
     if (mode === "all") chars.length = 0;
     else if (mode === "word") {
       while (chars.length && /\s/.test(chars[chars.length - 1].ch)) chars.pop();

@@ -40,7 +40,7 @@ export function KeysApp() {
   const engineRef = useRef(null);
   const fileRef = useRef(null);
   const [settings, setSettings] = useState(loadSettings);
-  const [menuOpen, setMenuOpen] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [faceStatus, setFaceStatus] = useState("loading");
   const [ready, setReady] = useState(() => new Set());
   const [newFont, setNewFont] = useState("");
@@ -289,7 +289,7 @@ export function KeysApp() {
             <Toggle label="key strokes" checked={s.sound} onChange={(v) => set("sound", v)} />
             {range("volume", "soundVolume", 0, 1, 0.01, (v) => v.toFixed(2))}
             {range("variance", "soundVariance", 0, 0.4, 0.01, (v) => v.toFixed(2))}
-            {range("flips", "flipVolume", 0, 1, 0.01, (v) => (v ? `${Math.round(v * 100)}%` : "off"))}
+            {range("flips", "flipDb", -40, 0, 1, (v) => (v <= -40 ? "off" : `${v}dB`))}
           </Section>
 
           <Section title="Colours">

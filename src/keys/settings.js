@@ -45,7 +45,7 @@ export const CYCLE_CATALOG = [
   { id: "consent", label: "Manufacturing Consent", family: "Manufacturing Consent", enabled: true },
   { id: "dotgothic", label: "DotGothic16", family: "DotGothic16", enabled: true },
   { id: "tiltortion", label: "Tiltortion", family: "Tiltortion", enabled: true },
-  { id: "erki", label: "ERKI 30", family: "ERKI 30", enabled: true },
+  { id: "erki", label: "ERKI 30", family: "ERKI 30", enabled: false },
   { id: "beast", label: "Beast", family: "Beast", enabled: true },
   { id: "monument", label: "PP Monument Wide", family: "PP Monument Wide", weight: 900, enabled: true },
   {
@@ -65,7 +65,7 @@ export const CYCLE_CATALOG = [
   { id: "menlo", label: "Menlo", family: "Menlo", enabled: true },
   { id: "times", label: "Times New Roman Italic", family: "Times New Roman", style: "italic", enabled: false },
   { id: "didot", label: "Didot", family: "Didot", enabled: false },
-  { id: "skullz", label: "SkullZ", family: "SkullZ", enabled: false },
+  { id: "skullz", label: "SkullZ", family: "SkullZ", enabled: true },
 ];
 
 export const EASES = ["expo.out", "power4.out", "power2.out", "back.out(2)", "elastic.out(1, 0.4)", "none"];
@@ -73,8 +73,8 @@ export const EASES = ["expo.out", "power4.out", "power2.out", "back.out(2)", "el
 export function defaultSettings() {
   return {
     face: "nhg-ds-96",
-    fontSize: 96,
-    tracking: -0.02,
+    fontSize: 246,
+    tracking: -0.005,
     leading: 1,
     scale: 1,
     offsetX: 0,
@@ -87,24 +87,24 @@ export function defaultSettings() {
     fonts: CYCLE_CATALOG.map((font) => ({ ...font })),
     order: "random",
     steps: 7,
-    interval: 38,
+    interval: 59,
     jitter: 0.3,
     scramble: 0.25,
     matchHeight: true,
-    sizeJitter: 0.15,
-    shake: 0.03,
+    sizeJitter: 0.49,
+    shake: 0.175,
     landScale: 1.18,
     landDuration: 260,
     landEase: "expo.out",
 
     box: true,
     boxStyle: "outline",
-    boxPad: 0.04,
+    boxPad: 0,
     boxLine: 1.5,
-    fillChance: 0.2,
+    fillChance: 0.52,
     boxHold: 90,
     label: true,
-    labelSize: 11,
+    labelSize: 15,
 
     caret: true,
     caretStyle: "bar",
@@ -113,7 +113,7 @@ export function defaultSettings() {
     sound: true,
     soundVolume: 0.8,
     soundVariance: 0.08,
-    flipVolume: 0.5,
+    flipDb: -15,
 
     bg: "#000000",
     text: "#ffffff",
@@ -132,6 +132,7 @@ export function loadSettings() {
     const fonts = Array.isArray(saved.fonts) ? saved.fonts : d.fonts;
     const known = new Set(fonts.map((font) => font.id));
     if (saved.blink === 530) saved.blink = d.blink;
+    if (saved.flipDb === -10) saved.flipDb = d.flipDb;
     return {
       ...d,
       ...saved,
