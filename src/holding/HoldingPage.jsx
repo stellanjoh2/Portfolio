@@ -18,16 +18,18 @@ export function HoldingPage() {
     <div className="shell">
       <div className="hero">
         <div className={ready ? "holding-scene is-ready" : "holding-scene"} ref={sceneRef} />
-        <h1 className="holding-title">Under Construction</h1>
-        <div className="site-mark" aria-hidden="true" />
-        <nav className="site-nav">
-          <a className="site-contact" href={SHOWREEL_URL} target="_blank" rel="noopener noreferrer">
-            Showreel
-          </a>
-          <a className="site-contact" href="mailto:hello@stellanjohansson.com">
-            Contact me
-          </a>
-        </nav>
+        <div className="holding-layout">
+          <div className="site-mark" aria-hidden="true" />
+          <h1 className="holding-title">This website is still under construction</h1>
+          <nav className="site-nav">
+            <a className="site-contact" href={SHOWREEL_URL} target="_blank" rel="noopener noreferrer">
+              Showreel
+            </a>
+            <a className="site-contact" href="mailto:hello@stellanjohansson.com">
+              Contact me
+            </a>
+          </nav>
+        </div>
       </div>
     </div>
   );
