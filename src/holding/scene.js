@@ -43,11 +43,16 @@ const BLOOM = { threshold: 1 * 0.78 + 0.08, strength: 0.2, radius: 0.2, tint: "#
 const FRAMING_ASPECT = 1.2;
 const MAX_PORTRAIT_PULLBACK = 2;
 
-// Display-space difference blend of the UI overlay (straight alpha) over the finished frame.
+// Display-space composite of the finished frame: background video screened under the scene,
+// then the UI overlay (straight alpha) difference-blended on top.
 const OverlayDifferenceShader = {
   uniforms: {
     tDiffuse: { value: null },
     tOverlay: { value: null },
+    tVideo: { value: null },
+    tModelMask: { value: null },
+    uVideoMix: { value: 0 },
+    uVideoScale: { value: new THREE.Vector2(1, 1) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -59,9 +64,16 @@ const OverlayDifferenceShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform sampler2D tOverlay;
+    uniform sampler2D tVideo;
+    uniform sampler2D tModelMask;
+    uniform float uVideoMix;
+    uniform vec2 uVideoScale;
     varying vec2 vUv;
     void main() {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float occluded = texture2D(tModelMask, vUv).r;
+      vec3 v = texture2D(tVideo, (vUv - 0.5) * uVideoScale + 0.5).rgb * uVideoMix * (1.0 - occluded);
+      c = 1.0 - (1.0 - c) * (1.0 - v);
       vec4 ui = texture2D(tOverlay, vUv);
       gl_FragColor = vec4(mix(c, abs(ui.rgb - c), ui.a), 1.0);
     }
@@ -70,10 +82,11 @@ const OverlayDifferenceShader = {
 
 /**
  * @param {HTMLElement} host
- * @param {{ modelUrl: string, paintOverlay: (canvas: HTMLCanvasElement, dpr: number) => void, onReady?: () => void }} opts
+ * @param {{ modelUrl: string, videoUrl?: string, paintOverlay: (canvas: HTMLCanvasElement, dpr: number) => void, onReady?: () => void }} opts
  *   paintOverlay — draws the difference-blended UI; runs on every resize and on repaintOverlay().
+ *   videoUrl — looping clip that covers the full canvas behind the model.
  */
-export function mountHoldingScene(host, { modelUrl, paintOverlay, onReady }) {
+export function mountHoldingScene(host, { modelUrl, videoUrl, paintOverlay, onReady }) {
   const overlayCanvas = document.createElement("canvas");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -126,6 +139,54 @@ export function mountHoldingScene(host, { modelUrl, paintOverlay, onReady }) {
   overlay.uniforms.tOverlay.value = overlayTexture;
   composer.addPass(overlay);
 
+  const video = document.createElement("video");
+  const videoTexture = new THREE.VideoTexture(video);
+  videoTexture.minFilter = THREE.LinearFilter;
+  videoTexture.generateMipmaps = false;
+  overlay.uniforms.tVideo.value = videoTexture;
+
+  // Coverage of the model, so the video sits behind it instead of screening through it.
+  const maskTarget = new THREE.WebGLRenderTarget(1, 1, { samples: 4 });
+  const maskMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  overlay.uniforms.tModelMask.value = maskTarget.texture;
+  const black = new THREE.Color(0x000000);
+  function renderMask() {
+    scene.overrideMaterial = maskMaterial;
+    renderer.setRenderTarget(maskTarget);
+    renderer.setClearColor(black, 1);
+    renderer.clear();
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    scene.overrideMaterial = null;
+  }
+  let videoAspect = 16 / 9;
+  const playVideo = () => video.play().catch(() => {});
+  if (videoUrl) {
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.addEventListener("loadeddata", () => {
+      videoAspect = video.videoWidth / video.videoHeight || videoAspect;
+      fitVideo();
+      overlay.uniforms.uVideoMix.value = 1;
+    });
+    video.src = videoUrl;
+    if (!reduceMotion) {
+      playVideo();
+      // Low Power Mode on iOS blocks muted autoplay until the first touch.
+      window.addEventListener("pointerdown", playVideo, { once: true });
+    }
+  }
+
+  function fitVideo() {
+    const aspect = renderer.domElement.width / renderer.domElement.height || 1;
+    overlay.uniforms.uVideoScale.value.set(
+      Math.min(1, aspect / videoAspect),
+      Math.min(1, videoAspect / aspect)
+    );
+  }
+
   const material = createHolographicMaterial(LOOK);
   const pivot = new THREE.Group();
   scene.add(pivot);
@@ -155,6 +216,7 @@ export function mountHoldingScene(host, { modelUrl, paintOverlay, onReady }) {
     renderer.setSize(w, h, false);
     composer.setPixelRatio(dpr);
     composer.setSize(w, h);
+    maskTarget.setSize(w * dpr, h * dpr);
     fxaa.material.uniforms.resolution.value.set(1 / (w * dpr), 1 / (h * dpr));
 
     camera.aspect = aspect;
@@ -165,6 +227,7 @@ export function mountHoldingScene(host, { modelUrl, paintOverlay, onReady }) {
     const base = CAMERA.position.distanceTo(CAMERA.target);
     camera.position.copy(controls.target).add(offset.setLength(base * pullback));
     controls.update();
+    fitVideo();
     repaintOverlay();
   }
 
@@ -220,6 +283,7 @@ export function mountHoldingScene(host, { modelUrl, paintOverlay, onReady }) {
       driftCamera(delta);
     }
     controls.update();
+    if (videoUrl) renderMask();
     composer.render();
   });
 
@@ -234,6 +298,13 @@ export function mountHoldingScene(host, { modelUrl, paintOverlay, onReady }) {
       pivot.traverse((obj) => obj.geometry?.dispose());
       material.dispose();
       overlayTexture.dispose();
+      window.removeEventListener("pointerdown", playVideo);
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      videoTexture.dispose();
+      maskTarget.dispose();
+      maskMaterial.dispose();
       composer.dispose();
       renderer.dispose();
       renderer.domElement.remove();

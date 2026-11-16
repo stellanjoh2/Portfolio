@@ -7,6 +7,7 @@ const SHOWREEL_URL = "https://www.youtube.com/watch?v=SXf1NswrDpw";
 // Split so the address never appears verbatim in the bundle for scrapers.
 const EMAIL_HREF = ["mailto:hello", "stellanjohansson.com"].join("@");
 const MODEL_URL = `${import.meta.env.BASE_URL}excavator.glb`;
+const VIDEO_URL = `${import.meta.env.BASE_URL}holding-bg.mp4`;
 const INK = "#ffffff";
 const HOVER = "#c4ff00";
 
@@ -34,6 +35,7 @@ export function HoldingPage() {
 
     const scene = mountHoldingScene(sceneRef.current, {
       modelUrl: MODEL_URL,
+      videoUrl: VIDEO_URL,
       paintOverlay,
       onReady: () => setReady(true),
     });
