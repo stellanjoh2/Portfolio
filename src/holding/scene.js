@@ -17,6 +17,13 @@ const LOOK = {
   brightness: 1,
 };
 const AUTO_ROTATE = 0.5; // rad/s around world Y, Orby "forward"
+// Zero-g drift for the model: a second spin about a tilted world axis plus a slow bob.
+const TUMBLE = {
+  axis: new THREE.Vector3(1, 0, 0.45).normalize(),
+  speed: -0.16, // rad/s
+  bobAmplitude: 0.05,
+  bobSpeed: 0.45, // rad/s of the sine phase
+};
 // Camera drift around the target: counter-yaw plus a slow pitch swing, so the motion is not single-axis.
 const GIMBAL = {
   yawSpeed: -0.12, // rad/s
@@ -36,11 +43,38 @@ const BLOOM = { threshold: 1 * 0.78 + 0.08, strength: 0.2, radius: 0.2, tint: "#
 const FRAMING_ASPECT = 1.2;
 const MAX_PORTRAIT_PULLBACK = 2;
 
+// Display-space difference blend of the UI overlay (straight alpha) over the finished frame.
+const OverlayDifferenceShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    tOverlay: { value: null },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tOverlay;
+    varying vec2 vUv;
+    void main() {
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      vec4 ui = texture2D(tOverlay, vUv);
+      gl_FragColor = vec4(mix(c, abs(ui.rgb - c), ui.a), 1.0);
+    }
+  `,
+};
+
 /**
  * @param {HTMLElement} host
- * @param {{ modelUrl: string, onReady?: () => void }} opts
+ * @param {{ modelUrl: string, paintOverlay: (canvas: HTMLCanvasElement, dpr: number) => void, onReady?: () => void }} opts
+ *   paintOverlay — draws the difference-blended UI; runs on every resize and on repaintOverlay().
  */
-export function mountHoldingScene(host, { modelUrl, onReady }) {
+export function mountHoldingScene(host, { modelUrl, paintOverlay, onReady }) {
+  const overlayCanvas = document.createElement("canvas");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
@@ -85,6 +119,13 @@ export function mountHoldingScene(host, { modelUrl, onReady }) {
   const fxaa = new ShaderPass(FXAAShader);
   composer.addPass(fxaa);
 
+  const overlayTexture = new THREE.CanvasTexture(overlayCanvas);
+  overlayTexture.minFilter = THREE.LinearFilter;
+  overlayTexture.generateMipmaps = false;
+  const overlay = new ShaderPass(OverlayDifferenceShader);
+  overlay.uniforms.tOverlay.value = overlayTexture;
+  composer.addPass(overlay);
+
   const material = createHolographicMaterial(LOOK);
   const pivot = new THREE.Group();
   scene.add(pivot);
@@ -124,6 +165,15 @@ export function mountHoldingScene(host, { modelUrl, onReady }) {
     const base = CAMERA.position.distanceTo(CAMERA.target);
     camera.position.copy(controls.target).add(offset.setLength(base * pullback));
     controls.update();
+    repaintOverlay();
+  }
+
+  function repaintOverlay() {
+    const { width, height } = overlayCanvas;
+    paintOverlay(overlayCanvas, renderer.getPixelRatio());
+    // GPU storage is allocated at the first upload's size; a resized canvas needs a fresh texture.
+    if (overlayCanvas.width !== width || overlayCanvas.height !== height) overlayTexture.dispose();
+    overlayTexture.needsUpdate = true;
   }
 
   const ro = new ResizeObserver(resize);
@@ -135,6 +185,9 @@ export function mountHoldingScene(host, { modelUrl, onReady }) {
   let elapsed = 0;
   const orbitOffset = new THREE.Vector3();
   const orbit = new THREE.Spherical();
+  const WORLD_UP = new THREE.Vector3(0, 1, 0);
+  const spinStep = new THREE.Quaternion();
+  const tumbleStep = new THREE.Quaternion();
   let gimbalWeight = 1;
   let gimbalPhase = 0;
   let lastPitch = 0;
@@ -160,23 +213,30 @@ export function mountHoldingScene(host, { modelUrl, onReady }) {
     elapsed += delta;
     material.uniforms.uTime.value = elapsed * LOOK.shaderAnimationSpeed;
     if (!reduceMotion) {
-      pivot.rotation.y += delta * AUTO_ROTATE;
+      spinStep.setFromAxisAngle(WORLD_UP, delta * AUTO_ROTATE);
+      tumbleStep.setFromAxisAngle(TUMBLE.axis, delta * TUMBLE.speed);
+      pivot.quaternion.premultiply(spinStep).premultiply(tumbleStep).normalize();
+      pivot.position.y = TUMBLE.bobAmplitude * Math.sin(elapsed * TUMBLE.bobSpeed);
       driftCamera(delta);
     }
     controls.update();
     composer.render();
   });
 
-  return () => {
-    disposed = true;
-    renderer.setAnimationLoop(null);
-    timer.dispose();
-    ro.disconnect();
-    controls.dispose();
-    pivot.traverse((obj) => obj.geometry?.dispose());
-    material.dispose();
-    composer.dispose();
-    renderer.dispose();
-    renderer.domElement.remove();
+  return {
+    repaintOverlay,
+    dispose() {
+      disposed = true;
+      renderer.setAnimationLoop(null);
+      timer.dispose();
+      ro.disconnect();
+      controls.dispose();
+      pivot.traverse((obj) => obj.geometry?.dispose());
+      material.dispose();
+      overlayTexture.dispose();
+      composer.dispose();
+      renderer.dispose();
+      renderer.domElement.remove();
+    },
   };
 }

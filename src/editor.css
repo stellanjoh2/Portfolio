@@ -72,7 +72,6 @@ body {
   height: 54px;
   color: #fff;
   background-color: currentColor;
-  mix-blend-mode: difference;
   -webkit-mask-image: url("./assets/s-logo.svg");
   mask-image: url("./assets/s-logo.svg");
   -webkit-mask-repeat: no-repeat;
@@ -95,7 +94,6 @@ body {
   bottom: 42px;
   z-index: 6;
   color: #fff;
-  mix-blend-mode: difference;
   font-family: "neue-haas-grotesk-display", "Helvetica Neue", Arial, sans-serif;
   font-weight: 900;
   font-style: italic;
@@ -122,9 +120,25 @@ body {
   pointer-events: none;
 }
 
-/* Linear from 91px at a 390px-wide phone to 121.5px at 2560px. */
+/* iOS: 100vh includes the area behind the browser toolbars; dvh is the visible viewport. */
+.hero--holding {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Once WebGL composites the difference-blended UI, the DOM copies only provide layout, links and a11y. */
+.hero--holding.is-blended .holding-title,
+.hero--holding.is-blended .site-contact {
+  color: transparent;
+}
+
+.hero--holding.is-blended .site-mark {
+  background-color: transparent;
+}
+
+/* Linear from 91px at a 390px-wide phone to 121.5px at 2560px; capped by height on short (landscape) screens. */
 .holding-layout .site-mark {
-  --mark-h: clamp(91.1px, 85.6px + 1.4vw, 121.5px);
+  --mark-h: min(clamp(91.1px, 85.6px + 1.4vw, 121.5px), 18vh, 18dvh);
   position: static;
   width: calc(var(--mark-h) * 198 / 248.77);
   height: var(--mark-h);
@@ -133,24 +147,22 @@ body {
 .site-nav {
   display: flex;
   gap: 40px;
-  mix-blend-mode: difference;
   pointer-events: auto;
 }
 
 .site-nav .site-contact {
   position: static;
-  font-size: 54px;
+  font-size: min(54px, 11vh, 11dvh);
 }
 
 .holding-title {
   margin: 0;
   padding: 0 24px;
   color: #fff;
-  mix-blend-mode: difference;
   font-family: "neue-haas-grotesk-display", "Helvetica Neue", Arial, sans-serif;
   font-weight: 900;
   font-style: italic;
-  font-size: min(144px, 15vw);
+  font-size: min(144px, 15vw, 17vh, 17dvh);
   line-height: 0.85;
   letter-spacing: -0.03em;
   text-align: center;
@@ -189,7 +201,7 @@ body {
   }
 
   .site-nav .site-contact {
-    font-size: 40px;
+    font-size: min(40px, 7vh, 7dvh);
   }
 }
 
