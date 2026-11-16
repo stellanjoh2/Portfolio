@@ -3,8 +3,9 @@ import logoUrl from "../assets/s-logo.svg?url";
 import { mountHoldingScene } from "./scene.js";
 import { markImagesReady, paintUiMask } from "./uiMask.js";
 
-// TODO: replace with the external showreel link.
-const SHOWREEL_URL = "#";
+const SHOWREEL_URL = "https://www.youtube.com/watch?v=SXf1NswrDpw";
+// Split so the address never appears verbatim in the bundle for scrapers.
+const EMAIL_HREF = ["mailto:hello", "stellanjohansson.com"].join("@");
 const MODEL_URL = `${import.meta.env.BASE_URL}excavator.glb`;
 const INK = "#ffffff";
 const HOVER = "#c4ff00";
@@ -78,8 +79,16 @@ export function HoldingPage() {
             <a className="site-contact" href={SHOWREEL_URL} target="_blank" rel="noopener noreferrer">
               Showreel
             </a>
-            <a className="site-contact" href="mailto:hello@stellanjohansson.com">
-              Contact me
+            <a
+              className="site-contact"
+              href="https://www.linkedin.com/in/stellanj/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              LinkedIn
+            </a>
+            <a className="site-contact" href={EMAIL_HREF}>
+              Email me
             </a>
           </nav>
         </div>
