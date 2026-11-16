@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "index.html"),
         keys: resolve(import.meta.dirname, "keys/index.html"),
+        travel: resolve(import.meta.dirname, "travel/index.html"),
       },
     },
   },
