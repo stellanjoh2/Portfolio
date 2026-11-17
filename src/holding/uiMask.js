@@ -17,6 +17,10 @@ function loadMarkImage(url) {
 /** Glyph-by-glyph so letter-spacing and kerning come straight from the browser's own layout. */
 function paintText(ctx, el, color, origin) {
   const style = getComputedStyle(el);
+  const opacity = Number(style.opacity);
+  if (!(opacity > 0) || style.visibility === "hidden") return;
+  ctx.save();
+  ctx.globalAlpha = opacity;
   ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
   ctx.fillStyle = color;
   ctx.textBaseline = "alphabetic";
@@ -38,9 +42,13 @@ function paintText(ctx, el, color, origin) {
       ctx.fillText(text[i], rect.left - origin.left, baseline - origin.top);
     }
   }
+  ctx.restore();
 }
 
 function paintMark(ctx, el, color, origin, url) {
+  const style = getComputedStyle(el);
+  const opacity = Number(style.opacity);
+  if (!(opacity > 0) || style.visibility === "hidden") return;
   const { img } = loadMarkImage(url);
   if (!img.complete || !img.naturalWidth) return;
   const rect = el.getBoundingClientRect();
@@ -55,7 +63,10 @@ function paintMark(ctx, el, color, origin, url) {
   t.globalCompositeOperation = "source-in";
   t.fillStyle = color;
   t.fillRect(0, 0, w, h);
+  ctx.save();
+  ctx.globalAlpha = opacity;
   ctx.drawImage(tint, rect.left - origin.left, rect.top - origin.top, rect.width, rect.height);
+  ctx.restore();
 }
 
 /**

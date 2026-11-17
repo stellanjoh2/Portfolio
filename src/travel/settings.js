@@ -21,6 +21,7 @@ export function defaultSettings() {
     speedVariance: 0.2,
     hold: 1,
     loop: true,
+    spin: 0,
 
     lineWidth: 1.25,
     dotSize: 17.5,

@@ -157,6 +157,7 @@ export function TravelApp() {
             {range("stagger", "stagger", 0, 4, 0.05, (v) => `${v.toFixed(2)}s`)}
             {range("speed var", "speedVariance", 0, 0.6, 0.01, (v) => v.toFixed(2))}
             {range("hold", "hold", 0, 5, 0.1, (v) => `${v.toFixed(1)}s`)}
+            {range("scene rot", "spin", -20, 20, 0.5, (v) => `${v}°`)}
             <Toggle label="loop" checked={s.loop} onChange={(v) => set("loop", v)} />
           </Section>
 

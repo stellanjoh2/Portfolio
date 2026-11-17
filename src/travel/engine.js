@@ -219,10 +219,13 @@ export function createTravel(canvas, initial) {
     controls.update();
 
     let t = (now - start) / 1000;
-    if (settings.loop && t > cycleLength()) {
+    const cycle = cycleLength();
+    if (settings.loop && t > cycle) {
       start = now;
       t = 0;
     }
+    const travel = Math.max(0.001, cycle - settings.hold);
+    globe.rotation.y = Math.min(1, t / travel) * settings.spin * DEG;
 
     const positions = dotGeometry.attributes.position;
     let visible = 0;

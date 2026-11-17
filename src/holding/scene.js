@@ -161,6 +161,13 @@ export function mountHoldingScene(host, { modelUrl, videoUrl, paintOverlay, onRe
   }
   let videoAspect = 16 / 9;
   const playVideo = () => video.play().catch(() => {});
+  // Intro owns the fade-up; keep the mix at 0 until the page timeline runs.
+  overlay.uniforms.uVideoMix.value = 0;
+  let modelReady = false;
+  let videoReady = !videoUrl;
+  function maybeReady() {
+    if (modelReady && videoReady) onReady?.();
+  }
   if (videoUrl) {
     video.muted = true;
     video.loop = true;
@@ -169,7 +176,8 @@ export function mountHoldingScene(host, { modelUrl, videoUrl, paintOverlay, onRe
     video.addEventListener("loadeddata", () => {
       videoAspect = video.videoWidth / video.videoHeight || videoAspect;
       fitVideo();
-      overlay.uniforms.uVideoMix.value = 1;
+      videoReady = true;
+      maybeReady();
     });
     video.src = videoUrl;
     if (!reduceMotion) {
@@ -189,6 +197,7 @@ export function mountHoldingScene(host, { modelUrl, videoUrl, paintOverlay, onRe
 
   const material = createHolographicMaterial(LOOK);
   const pivot = new THREE.Group();
+  pivot.scale.setScalar(0);
   scene.add(pivot);
 
   let disposed = false;
@@ -205,7 +214,8 @@ export function mountHoldingScene(host, { modelUrl, videoUrl, paintOverlay, onRe
     model.scale.multiplyScalar(scale);
     model.position.sub(center.multiplyScalar(scale));
     pivot.add(model);
-    onReady?.();
+    modelReady = true;
+    maybeReady();
   });
 
   function resize() {
@@ -289,6 +299,11 @@ export function mountHoldingScene(host, { modelUrl, videoUrl, paintOverlay, onRe
 
   return {
     repaintOverlay,
+    /** GSAP targets for the entry sequence: videoMix.value, modelScale.{x,y,z}. */
+    intro: {
+      videoMix: overlay.uniforms.uVideoMix,
+      modelScale: pivot.scale,
+    },
     dispose() {
       disposed = true;
       renderer.setAnimationLoop(null);
