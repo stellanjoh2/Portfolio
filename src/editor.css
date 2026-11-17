@@ -133,6 +133,13 @@ body {
   display: inline-block;
 }
 
+/* Soft break for desktop 2-line title; off on mobile so "is still under" can wrap naturally. */
+@media (max-width: 920px) and (orientation: portrait) {
+  .holding-title-break {
+    display: none;
+  }
+}
+
 /* iOS: 100vh includes the area behind the browser toolbars; dvh is the visible viewport. */
 .hero--holding {
   height: 100vh;
@@ -208,8 +215,8 @@ body {
   font-family: "neue-haas-grotesk-display", "Helvetica Neue", Arial, sans-serif;
   font-weight: 900;
   font-style: italic;
-  /* 144px at 1080p → 192px at 1440p (same % of viewport height). */
-  font-size: min(192px, 15vw, 13.333vh, 13.333dvh);
+  /* ~130px at 1080p → ~173px at 1440p; slightly under the old 144px so lines fit cleaner. */
+  font-size: min(176px, 15vw, 12vh, 12dvh);
   line-height: 0.85;
   letter-spacing: -0.03em;
   text-align: center;

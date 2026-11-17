@@ -11,13 +11,14 @@ const MODEL_URL = `${import.meta.env.BASE_URL}excavator.glb`;
 const VIDEO_URL = `${import.meta.env.BASE_URL}holding-bg.mp4`;
 const INK = "#ffffff";
 const HOVER = "#c4ff00";
-const TITLE_LINE_1 = ["This", "website", "is", "still"];
-const TITLE_LINE_2 = ["under", "construction"];
+const TITLE_WORDS = ["This", "website", "is", "still", "under", "construction"];
 
 function TitleWords({ words }) {
   return words.map((word, i) => (
     <span key={`${word}-${i}`}>
       {i > 0 ? " " : null}
+      {/* Desktop keeps the 2-line break after "still"; mobile hides it so "is still under" can share a line. */}
+      {word === "under" ? <br className="holding-title-break" /> : null}
       <span className="holding-word">{word}</span>
     </span>
   ));
@@ -136,9 +137,7 @@ export function HoldingPage() {
         <div className="holding-layout" ref={layoutRef}>
           <div className="site-mark" ref={markRef} aria-hidden="true" />
           <h1 className="holding-title" ref={titleRef}>
-            <TitleWords words={TITLE_LINE_1} />
-            <br />
-            <TitleWords words={TITLE_LINE_2} />
+            <TitleWords words={TITLE_WORDS} />
           </h1>
           <nav className="site-nav" ref={navRef}>
             <a className="site-contact" href={SHOWREEL_URL} target="_blank" rel="noopener noreferrer">
