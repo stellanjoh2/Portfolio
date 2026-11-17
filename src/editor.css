@@ -122,11 +122,15 @@ body {
   pointer-events: none;
 }
 
-/* Hidden until GSAP reveal after the scene fade-from-black; avoids a flash before mount. */
+/* Hidden until GSAP reveal; title words are staggered individually. */
 .holding-layout .site-mark,
-.holding-layout .holding-title,
+.holding-layout .holding-word,
 .holding-layout .site-contact {
   opacity: 0;
+}
+
+.holding-title .holding-word {
+  display: inline-block;
 }
 
 /* iOS: 100vh includes the area behind the browser toolbars; dvh is the visible viewport. */

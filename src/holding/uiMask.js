@@ -16,12 +16,12 @@ function loadMarkImage(url) {
 
 /** Glyph-by-glyph so letter-spacing and kerning come straight from the browser's own layout. */
 function paintText(ctx, el, color, origin) {
-  const style = getComputedStyle(el);
-  const opacity = Number(style.opacity);
-  if (!(opacity > 0) || style.visibility === "hidden") return;
-  ctx.save();
-  ctx.globalAlpha = opacity;
-  ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  const rootStyle = getComputedStyle(el);
+  if (rootStyle.visibility === "hidden") return;
+  const rootOpacity = Number(rootStyle.opacity);
+  if (!(rootOpacity > 0)) return;
+
+  ctx.font = `${rootStyle.fontStyle} ${rootStyle.fontWeight} ${rootStyle.fontSize} ${rootStyle.fontFamily}`;
   ctx.fillStyle = color;
   ctx.textBaseline = "alphabetic";
   const metrics = ctx.measureText("Hg");
@@ -31,6 +31,14 @@ function paintText(ctx, el, color, origin) {
   const range = document.createRange();
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    // Per-word spans carry their own opacity during the staggered reveal.
+    const wordStyle = getComputedStyle(node.parentElement);
+    if (wordStyle.visibility === "hidden") continue;
+    const opacity = rootOpacity * Number(wordStyle.opacity);
+    if (!(opacity > 0)) continue;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
     const text = node.textContent;
     for (let i = 0; i < text.length; i++) {
       if (/\s/.test(text[i])) continue;
@@ -41,8 +49,8 @@ function paintText(ctx, el, color, origin) {
       const baseline = rect.top + (rect.height * ascent) / (ascent + descent);
       ctx.fillText(text[i], rect.left - origin.left, baseline - origin.top);
     }
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 function paintMark(ctx, el, color, origin, url) {
