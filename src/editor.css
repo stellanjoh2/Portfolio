@@ -215,8 +215,8 @@ body {
   font-family: "neue-haas-grotesk-display", "Helvetica Neue", Arial, sans-serif;
   font-weight: 900;
   font-style: italic;
-  /* ~130px at 1080p → ~173px at 1440p; slightly under the old 144px so lines fit cleaner. */
-  font-size: min(176px, 15vw, 12vh, 12dvh);
+  /* ~190px at 1080p → ~253px at 1440p (~10% up from the previous 16vh / 234px cap). */
+  font-size: min(257px, 22vw, 17.6vh, 17.6dvh);
   line-height: 0.85;
   letter-spacing: -0.03em;
   text-align: center;
