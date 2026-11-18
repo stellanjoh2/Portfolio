@@ -109,8 +109,7 @@ body {
   color: #c4ff00;
 }
 
-/* Headline stays centered; mark + nav sit in the outer rows. On tall screens, pad so the
-   vertical rhythm stays close to a 1080p frame instead of drifting toward the edges. */
+/* Headline stays centered; mark + nav sit in the outer rows and scale with the viewport. */
 .holding-layout {
   position: absolute;
   inset: 0;
@@ -118,7 +117,7 @@ body {
   grid-template-rows: 1fr auto 1fr;
   justify-items: center;
   align-items: center;
-  padding-block: max(0px, calc((100dvh - 1080px) * 0.5));
+  padding-block: max(16px, 3.5dvh);
   pointer-events: none;
 }
 
@@ -156,9 +155,9 @@ body {
   background-color: transparent;
 }
 
-/* ~112px at 1080p → ~150px at 1440p; mobile MQ below overrides on narrow portrait. */
+/* ~112px at 1080p → ~225px at 4K; mobile MQ below overrides on narrow portrait. */
 .holding-layout .site-mark {
-  --mark-h: min(10.4vh, 10.4dvh, 7.5vw, 162px);
+  --mark-h: min(10.4vh, 10.4dvh, 7.5vw);
   position: static;
   width: calc(var(--mark-h) * 198 / 248.77);
   height: var(--mark-h);
@@ -169,8 +168,8 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75em;
-  /* 54px at 1080p → 72px at 1440p */
-  font-size: min(72px, 5vw, 5vh, 5dvh);
+  /* ~54px at 1080p → ~108px at 4K */
+  font-size: min(5vw, 5vh, 5dvh);
   pointer-events: auto;
 }
 
@@ -210,13 +209,13 @@ body {
 
 .holding-title {
   margin: 0;
-  padding: 0 24px;
+  padding: 0 max(24px, 1.5vw);
   color: #fff;
   font-family: "neue-haas-grotesk-display", "Helvetica Neue", Arial, sans-serif;
   font-weight: 900;
   font-style: italic;
-  /* ~190px at 1080p → ~253px at 1440p (~10% up from the previous 16vh / 234px cap). */
-  font-size: min(257px, 22vw, 17.6vh, 17.6dvh);
+  /* ~190px at 1080p → ~380px at 4K — no pixel cap so it keeps scaling past 1440p. */
+  font-size: min(22vw, 17.6vh, 17.6dvh);
   line-height: 0.85;
   letter-spacing: -0.03em;
   text-align: center;
