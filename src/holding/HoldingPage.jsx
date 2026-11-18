@@ -4,11 +4,11 @@ import logoUrl from "../assets/s-logo.svg?url";
 import { mountHoldingScene } from "./scene.js";
 import { markImagesReady, paintUiMask } from "./uiMask.js";
 
-const SHOWREEL_URL = "https://www.youtube.com/watch?v=SXf1NswrDpw";
+const SHOWREEL_URL = "https://www.youtube.com/watch?v=iK96i4wsLVM";
 // Split so the address never appears verbatim in the bundle for scrapers.
 const EMAIL_HREF = ["mailto:hello", "stellanjohansson.com"].join("@");
 const MODEL_URL = `${import.meta.env.BASE_URL}excavator.glb`;
-const VIDEO_URL = `${import.meta.env.BASE_URL}holding-bg.mp4`;
+const VIDEO_URL = `${import.meta.env.BASE_URL}microreel.mp4`;
 const INK = "#ffffff";
 const HOVER = "#c4ff00";
 const TITLE_WORDS = ["This", "website", "is", "still", "under", "construction"];
