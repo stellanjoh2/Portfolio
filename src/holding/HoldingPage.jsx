@@ -13,15 +13,31 @@ const INK = "#ffffff";
 const HOVER = "#c4ff00";
 const TITLE_WORDS = ["This", "website", "is", "still", "under", "construction"];
 
+function TitleWord({ word }) {
+  return <span className="holding-word">{word}</span>;
+}
+
 function TitleWords({ words }) {
-  return words.map((word, i) => (
-    <span key={`${word}-${i}`}>
-      {i > 0 ? " " : null}
-      {/* Desktop keeps the 2-line break after "still"; mobile hides it so "is still under" can share a line. */}
-      {word === "under" ? <br className="holding-title-break" /> : null}
-      <span className="holding-word">{word}</span>
-    </span>
-  ));
+  return words.map((word, i) => {
+    if (word === "still") {
+      return (
+        <span key="still-under" className="holding-keep">
+          {i > 0 ? " " : null}
+          {/* Desktop 2-line break sits inside the keep group; hidden below desktop so both words share a line. */}
+          <TitleWord word="still" />{" "}
+          <br className="holding-title-break" />
+          <TitleWord word="under" />
+        </span>
+      );
+    }
+    if (word === "under") return null;
+    return (
+      <span key={`${word}-${i}`}>
+        {i > 0 ? " " : null}
+        <TitleWord word={word} />
+      </span>
+    );
+  });
 }
 
 export function HoldingPage() {

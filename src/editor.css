@@ -132,8 +132,13 @@ body {
   display: inline-block;
 }
 
-/* Soft break for desktop 2-line title; off on mobile so "is still under" can wrap naturally. */
-@media (max-width: 920px) and (orientation: portrait) {
+/* Keeps "still under" on one line when the soft break below is hidden (phone/tablet). */
+.holding-title .holding-keep {
+  white-space: nowrap;
+}
+
+/* Soft break for desktop 2-line title; off on phone/tablet so "still under" can share a line. */
+@media (max-width: 1400px) {
   .holding-title-break {
     display: none;
   }
@@ -253,6 +258,19 @@ body {
 }
 
 @media (max-width: 920px) and (orientation: portrait) {
+  /* Mark and nav size the outer rows; title centers in the space between so the tall link stack doesn't pull the composition down. */
+  .holding-layout {
+    grid-template-rows: auto 1fr auto;
+    padding-block: max(20px, 4.5dvh);
+  }
+
+  /* Keep the pre–large-display mobile size (~58px on a 390px phone) so lines stay centered and fit. */
+  .holding-title {
+    width: 100%;
+    font-size: min(15vw, 9vh, 9dvh);
+    text-align: center;
+  }
+
   .site-nav {
     flex-direction: column;
     flex-wrap: nowrap;
